@@ -25,7 +25,7 @@ export const COPY = {
   /* ───────── 页面标题与 meta ───────── */
   page: {
     indexTitle: 'skintone · 肤色测量',
-    indexDescription: '用 ITA°、CIELAB 色相角与彩度把肤色深浅和底色冷暖变成可复现的测量。',
+    indexDescription: '拍一张照片，看看你的肤色深浅、底色冷暖，以及最适合你的颜色。',
     cardTitle: 'skintone 参考卡 · A4 打印',
     calibrateTitle: 'skintone · 色卡自标定',
   },
@@ -76,7 +76,7 @@ export const COPY = {
   nav: {
     next: { mode: '下一步：采集', capture: '下一步：标注', roi: '开始分析', result: '再来一张' },
     back: '上一步',
-    busyAnalyzing: '服务端正在做色彩学计算…',
+    busyAnalyzing: '正在分析…',
     busyWorking: '处理中…',
     analyzePending: '已上传，等待服务端结果…',
   },
@@ -165,7 +165,7 @@ export const COPY = {
     labelStrong: '我已阅读并同意',
     policyLink: '《隐私条款》',
     /** 勾选时的一句话说明：只讲"这次会发生什么"，细节在隐私条款里 */
-    onStore: '这张照片会保存在服务端，方便你之后回看这次结果。',
+    onStore: '这张照片会保存在服务器上，方便你之后回看这次结果。',
     /** storeImage = false 时的说明 */
     offMemoryOnly: '这张照片不会被保存，测完就丢。',
   },
@@ -182,7 +182,7 @@ export const COPY = {
     clearRegion: (label) => `清空${label}`,
     clearAll: '全部清空',
     skip: '跳过，由服务端自动识别',
-    skipToast: '已跳过标注：服务端会兜底自动识别 ROI（置信度可能更低）。',
+    skipToast: '已跳过标注，照片里的皮肤会自动识别。',
     clearedToast: '已清空所有标注。',
     nothingToUndo: '这个区域还没有点。',
     nothingToClear: '这个区域还没有点。',
@@ -201,7 +201,7 @@ export const COPY = {
     loadOkToast: '已取回存档结果（不含原图）。',
     needIdToast: '先填 requestId。',
     deleteButton: '删除这次记录',
-    deleteConfirm: '删除这次记录？服务端会同时删掉元数据与归档原图，无法恢复。',
+    deleteConfirm: '删除这次记录？照片和结果会一起删掉，无法恢复。',
     deletedToast: '已删除。',
     deletedLabel: '已删除',
     needImageToast: '先拍一张或选一张图。',
@@ -210,7 +210,7 @@ export const COPY = {
     renderFailedMessage: (message) => `结果渲染失败：${message}`,
     renderFailedHint:
       '数据已经拿到（requestId 见控制台），只是前端画不出来。属于前端 bug，请把控制台报错一并反馈。',
-    insufficientToast: '置信度不足，服务端拒绝给结论——请看页面上的物理试色指引。',
+    insufficientToast: '这次没测准，请看下面的建议。',
     physicalFallbackFootnote: '',
   },
 
@@ -321,19 +321,18 @@ export const COPY = {
     disclaimerFallback: '结果只根据这一张照片估出来，和仪器实测会有差别。',
   },
 
-  /* ───────── 置信度不足 → 物理试色引导（说法待定稿） ───────── */
+  /* ───────── 测不准 → 用粉底试（说法待定稿） ─────────
+     界面上不出现任何内部状态（置信度档位、后端 warnings）——那些是工程信号。 */
   physicalTest: {
-    title: '这次测不准，建议做物理试色',
-    lead: (levelLabel) =>
-      `这次测量的置信度是 ${levelLabel}，服务端按契约拒绝给结论。数字不可靠时，用眼睛比对比色更可靠。`,
+    title: '这次没测准',
+    lead: '所以我们不给配色建议。数字不可靠的时候，用眼睛比对比色更可靠。',
     steps: [
       '取三条深浅相邻的粉底，比你以为的色号再深一档和浅一档各一条。',
       '在自然光下，把三条并排涂在下颌线上，每条之间留一点空隙。',
       '等 10 分钟，让粉底与皮脂融合（刚涂上去的颜色不准）。',
       '站到窗边自然光下照镜子，看哪一条的边界「消失」——那一条就是你的色号。',
     ],
-    footnote: '单张照片无法区分「皮肤本身」与「相机白平衡」，这时候仪器的数字不如你的眼睛可靠。',
-    serverNotesTitle: '服务端说明',
+    footnote: '一张照片分不清「皮肤本来的颜色」和「当时的光线颜色」，这种时候数字不如你的眼睛可靠。',
   },
 
   /* ───────── 错误提示（契约错误码 → 可操作中文） ───────── */
@@ -412,7 +411,7 @@ export const COPY = {
     title: '打印参考卡',
     loading: '正在读取规格…',
     fromServer: (specVersion) => `规格来自后端，specVersion ${specVersion}。`,
-    fromFallback: (why) => `后端没连上（${why}）——已改用内置兜底副本，内容与契约一致。`,
+    fromFallback: (why) => `没连上服务器（${why}）——已改用随程序附带的一份，内容是一样的。`,
     sourceLabel: '规格来源',
     sourceServer: (base, cardId) => `GET ${base}/v1/card/${cardId}`,
     sourceFallback: '内置兜底副本（后端未就绪）',

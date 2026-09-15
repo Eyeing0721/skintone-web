@@ -286,29 +286,19 @@ function adviceCard(r) {
 }
 
 /**
- * 置信度不足时的物理试色引导。
+ * 测不准时的引导：让用户去做物理试色。
  * 契约 §0 原则 2：宁可说「测不准」，也不给一个看起来很精确的数字。
- * 文案（含"怎么做"的步骤）在 js/copy.js 的 physicalTest，待项目所有者定稿。
+ * 界面上不出现任何内部状态——置信度档位（会渲染成 "level = INSUFFICIENT"）、
+ * 后端 warnings（"光源估计使用的候选来源：background"）都是工程信号，不上屏。
  */
 export function physicalTestCard(r, { compact = false } = {}) {
   const g = COPY.physicalTest;
-  const warnings = Array.isArray(r && r.warnings) ? r.warnings.filter(Boolean) : [];
-  const level = (r && r.confidence && r.confidence.level) || '';
-  const levelLabel = (R.confidenceLevels[level] || {}).label || level || COPY.common.emptyValue;
   return `<section class="card physical${compact ? ' compact' : ''}">
     <header class="card-head">
       <h2>${esc(g.title)}</h2>
-      <span class="badge tone-bad">level = ${esc(level || COPY.common.emptyValue)}</span>
     </header>
-    <p class="physical-lead">${esc(g.lead(levelLabel))}</p>
+    <p class="physical-lead">${esc(g.lead)}</p>
     <ol class="physical-steps">${g.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
-    ${
-      warnings.length
-        ? `<div class="warn-box"><b>${esc(g.serverNotesTitle)}</b><ul>${warnings
-            .map((w) => `<li>${esc(w)}</li>`)
-            .join('')}</ul></div>`
-        : ''
-    }
     <p class="muted small">${esc(g.footnote)}</p>
   </section>`;
 }
