@@ -7,9 +7,9 @@
    因为它的职责是衬托用户的肤色色块。界面自己一旦带明显色相，就会通过同时
    对比干扰用户对肤色的判断——深紫或高饱和底尤其会把皮肤衬得偏黄或偏冷。
 
-   约束：无构建、无 CDN、只用系统字体。页面本体不滚动；#content 内部可滚，
-   但外观上隐藏滚动条（结果页有八九张卡，390×844 上物理放不下，宁可让内容
-   可达，也不裁掉数据）。
+   布局：整页是一个 100dvh 的 grid（页头 / 内容 / 页脚），内容区自己滚动。
+   **滚动条在这个项目里是允许的**——"不依赖滚动"是另一个项目（Files）的约束，
+   不要套用到这里。既然滚动可行，结果页就不必为了塞进一屏而压缩间距。
 
    本文件服务 index.html 与 calibrate.html。
    card.html（可打印参考卡）仍用 style.css + card.css —— 那是 mm 精度的
@@ -205,12 +205,26 @@ body.app > * { position: relative; z-index: 1; }
 .content {
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overscroll-behavior: contain;
+  /* 预留滚动条槽位：出现滚动条时不引起整页横向跳动 */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hair-strong) transparent;
   padding: 18px 16px 24px;
 }
 
-.content::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* 桌面端给一条细滚动条。它本身是有用的信息：下面还有内容。 */
+.content::-webkit-scrollbar { width: 10px; height: 10px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+
+.content::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--r-pill);
+  background: var(--hair-strong);
+  background-clip: content-box;
+}
+
+.content::-webkit-scrollbar-thumb:hover { background: var(--muted-2); background-clip: content-box; }
 
 .step-panel {
   width: min(var(--shell), 100%);
@@ -415,10 +429,10 @@ body.app > * { position: relative; z-index: 1; }
 /* ── 10. 第 4 步：结果 ─────────────────────────────────────────────── */
 .load-row { margin-bottom: 14px; }
 #result-root { display: block; }
-.result-view { display: flex; flex-direction: column; gap: 11px; }
+.result-view { display: flex; flex-direction: column; gap: 15px; }
 
 .card {
-  padding: 15px 16px;
+  padding: 18px 18px;
   border: 1px solid var(--hair);
   border-radius: var(--r-lg);
   background: var(--card);
@@ -585,8 +599,8 @@ h3.sub {
   flex-direction: column;
   justify-content: flex-end;
   gap: 2px;
-  min-height: 124px;
-  padding: 12px;
+  min-height: 152px;
+  padding: 14px;
   border: 1px solid var(--hair);
   border-radius: var(--r);
 }
@@ -597,15 +611,15 @@ h3.sub {
 .axis b { font-family: var(--mono); font-size: 16px; font-variant-numeric: tabular-nums; }
 
 /* 色票 */
-.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 9px; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; }
 
 .swatch {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 1px;
-  min-height: 82px;
-  padding: 9px;
+  gap: 2px;
+  min-height: 96px;
+  padding: 10px;
   border: 1px solid var(--hair);
   border-radius: var(--r);
 }
