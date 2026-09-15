@@ -8,7 +8,7 @@
  * 措辞、中文类别名、门禁显示名一律来自 js/copy.js。
  */
 
-import { GATE_META, SPEC_VERSION } from './config.js';
+import { GATE_META, SPEC_VERSION, STORAGE_KEYS } from './config.js';
 import { COPY } from './copy.js';
 import { chroma, fmt, hexToLab, hexToRgb255, hueAngleDeg, labToHex, readableInk } from './color.js';
 
@@ -312,6 +312,50 @@ function warningsCard(r) {
   </section>`;
 }
 
+/* ------------------------------------------------------------------ */
+/* 分享卡：结果页里直接出卡，一键分享                                  */
+/* ------------------------------------------------------------------ */
+
+function shareBlock() {
+  return `<section class="card">
+    <header class="card-head">
+      <h2>${esc(R.cards.share)}</h2>
+      <span class="muted small">${esc(R.cards.shareSub)}</span>
+    </header>
+    <div class="share-stage">
+      <canvas id="share-canvas" width="1080" height="1440" aria-label="肤色结果卡"></canvas>
+    </div>
+    <div class="row gap wrap">
+      <button class="btn primary" id="btn-share-card" type="button">${esc(R.cards.shareButton)}</button>
+      <button class="btn" id="btn-save-card" type="button">${esc(R.cards.saveButton)}</button>
+    </div>
+  </section>`;
+}
+
+/**
+ * 结果卡必须在 innerHTML 之后渲染——canvas 得先在文档里。
+ * 渲染失败不该拖垮整个结果页：上面的数值与配色已经出来了，把这一块摘掉就是。
+ */
+async function mountShareCard(root, r) {
+  const canvas = root.querySelector('#share-canvas');
+  if (!canvas) return;
+  try {
+    const { buildCardData, renderCard, shareCard, downloadCard } = await import('./share-card.js');
+    const data = buildCardData(r);
+    const qr = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = 'assets/qr.svg';
+    });
+    renderCard(canvas, data, qr);
+    root.querySelector('#btn-share-card')?.addEventListener('click', () => shareCard(canvas, data));
+    root.querySelector('#btn-save-card')?.addEventListener('click', () => downloadCard(canvas, data));
+  } catch {
+    canvas.closest('.share-stage')?.remove();
+  }
+}
+
 function metaCard(r) {
   const created = r.createdAt ? new Date(r.createdAt) : null;
   const when = created && !Number.isNaN(created.getTime()) ? created.toLocaleString() : EMPTY;
@@ -373,11 +417,26 @@ export function renderResult(root, r) {
   } else {
     blocks.push(safe('advice', () => adviceCard(r)));
   }
-  blocks.push(safe('meta', () => metaCard(r)));
-
+  // 分享卡只在真的给了结论时出：测不准的场合刚说完"不给配色建议"，
+  // 转头又递上一张带配色的卡，是自相矛盾。
+  if (!noAdvice) blocks.push(safe('shareCard', () => shareBlock()));
   root.innerHTML = `<div class="result-view">${blocks.filter(Boolean).join('')}
+    <p class="result-foot">
+      <button class="inline-link" type="button" data-action="delete-result" data-id="${esc(r.requestId || '')}">${esc(COPY.resultStep.deleteButton)}</button>
+      <span class="muted tiny">${esc(R.cards.deleteNote)}</span>
+    </p>
     <p class="disclaimer">${esc(r.disclaimer || R.disclaimerFallback)}</p>
   </div>`;
+
+  // 分享卡要读这份结果（share.html 读同一个键）。顺手挂到 window 上便于排查：
+  // 控制台里的 __skintoneLastResult 就是服务端原始响应。
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.lastResult, JSON.stringify(r));
+  } catch {
+    /* 隐私模式：忽略；本页的卡仍然能渲染 */
+  }
+  window.__skintoneLastResult = r;
+  mountShareCard(root, r);
 }
 
 /** 后端未就绪 / 请求失败时的占位渲染 */
