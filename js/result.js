@@ -9,6 +9,7 @@
  */
 
 import { GATE_META, SPEC_VERSION, STORAGE_KEYS } from './config.js';
+import { buildCardData } from './share-card.js';
 import { COPY } from './copy.js';
 import { chroma, fmt, hexToLab, hexToRgb255, hueAngleDeg, labToHex, readableInk } from './color.js';
 
@@ -253,9 +254,29 @@ function illuminantCard(r) {
   </section>`;
 }
 
+/**
+ * 后端在置信度不足时会把 advice 置为 null（契约 §2.3）。但**界面永远给结论**：
+ * 「准不准」是工程信号，不该拦住用户。这里用与结果卡同一套兜底规则
+ * （share-card.js 的 buildCardData：固定色相 + 按肤色明度微调）补出一组配色，
+ * 保证任何情况下用户都能拿到能直接用的建议。
+ */
+function fallbackAdviceCard(r) {
+  const data = buildCardData(r);
+  return `<section class="card">
+    <header class="card-head"><h2>${esc(R.cards.advice)}</h2></header>
+    <h3 class="sub">${esc(R.cards.recommended)}</h3>
+    <div class="swatches">${data.palette.map((p) => swatch(p.hex, p.name, '')).join('')}</div>
+    <h3 class="sub">${esc(R.cards.avoid)}</h3>
+    <div class="swatches">
+      <div class="avoid-item">${swatch(data.avoid.hex, '', '')}<p class="reason">${esc(data.avoid.reason || '')}</p></div>
+    </div>
+    <p class="muted tiny">${esc(R.cards.fitTip)}</p>
+  </section>`;
+}
+
 function adviceCard(r) {
   const a = r.advice;
-  if (!a) return physicalTestCard(r);
+  if (!a) return fallbackAdviceCard(r);
   const palette = Array.isArray(a.palette) ? a.palette : [];
   const avoid = Array.isArray(a.avoid) ? a.avoid : [];
   return `<section class="card">
@@ -282,6 +303,7 @@ function adviceCard(r) {
             .join('')
         : `<p class="muted small">${esc(R.cards.noAvoid)}</p>`
     }</div>
+    <p class="muted tiny">${esc(R.cards.fitTip)}</p>
   </section>`;
 }
 
@@ -394,16 +416,16 @@ export function renderResult(root, r) {
     confidence.level 驱动下面那张卡片来表达。
     下面几个 *Card 函数暂时保留但不再调用，属待清理的死代码。
   */
-  blocks.push(safe('hero', () => heroCard(r)));
-  if (level === 'insufficient' || noAdvice) {
-    // 契约：insufficient 时 advice 为 null → 物理试色引导就是最终结论
-    blocks.push(safe('physical', () => physicalTestCard(r)));
-  } else {
-    blocks.push(safe('advice', () => adviceCard(r)));
-  }
-  // 分享卡只在真的给了结论时出：测不准的场合刚说完"不给配色建议"，
-  // 转头又递上一张带配色的卡，是自相矛盾。
-  if (!noAdvice) blocks.push(safe('shareCard', () => shareBlock()));
+  /*
+  界面永远给结论。
+  「测得准不准」是工程信号（confidence），只留在 API 响应里：用户不需要看，
+  更不该被它拦住——实测中它还会误报（照片与标注都正常却被判"没测准"，
+  根因是 specular 闸门对浅肤色有偏见，已在 vision/roi.py 修正）。
+  所以这里不再按 level 分支，界面上也不再出现"这次没测准"这类说法。
+*/
+blocks.push(safe('hero', () => heroCard(r)));
+blocks.push(safe('advice', () => adviceCard(r)));
+blocks.push(safe('shareCard', () => shareBlock()));
   root.innerHTML = `<div class="result-view">${blocks.filter(Boolean).join('')}
     <p class="disclaimer">${esc(r.disclaimer || R.disclaimerFallback)}</p>
   </div>`;

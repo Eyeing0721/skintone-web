@@ -279,6 +279,8 @@ export const COPY = {
       shareSub: '可以直接保存或发给朋友',
       shareButton: '一键分享',
       saveButton: '保存图片',
+      /** 一句中性的提醒，替代原来那张"测不准"卡片 */
+      fitTip: '买粉底时，到专柜在颌线并排试三条深浅相邻的色号，10 分钟后看哪条的边界「消失」。',
       allGatesPassed: '各项可信度检查全部通过。',
       gatesSummary: (n) => `逐项检查明细（${n} 项）`,
       noGates: '服务端未返回检查数据',
