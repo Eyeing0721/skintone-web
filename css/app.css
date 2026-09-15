@@ -549,8 +549,34 @@ h3.sub {
   color: var(--muted);
 }
 
-/* 结果页头牌：大号 ITA + 深浅档 */
+/* 结果页头牌：一块大肤色 + 印在上面的结论（与结果卡同一套语言） */
 .card.hero { padding: 0; overflow: hidden; animation-duration: 0.42s; }
+
+.hero-swatch {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  min-height: 200px;
+  padding: 20px;
+}
+
+.hero-swatch b {
+  font-family: var(--serif);
+  font-size: clamp(30px, 9vw, 42px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.hero-swatch > span { font-size: 14px; opacity: 0.92; }
+
+.hero-swatch .hero-swatch-hex {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+}
 
 .hero-main {
   display: flex;

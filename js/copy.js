@@ -216,6 +216,8 @@ export const COPY = {
 
   result: {
     itaLabel: 'ITA° 肤色深浅角',
+    /** 界面上只说"深浅"。ITA° 这类术语留在 API 与仓库里，不上屏。 */
+    depthLabel: '深浅',
     undertoneLabel: '底色',
     hueLabel: '色相角 h_ab',
     chromaLabel: '彩度 C*',
@@ -311,12 +313,12 @@ export const COPY = {
         deltaE: 'ΔE00',
       },
       yesNo: { yes: '是', no: '否' },
-      deleteNote: '同时删除元数据与归档原图。',
+      deleteNote: '照片和这次结果会一起删掉。',
       specMismatch: (serverSpec, clientSpec) =>
         `服务端 specVersion 是 ${serverSpec}，本前端对齐的是 ${clientSpec}。字段含义可能已经漂移，建议先把两边版本对齐再看结论。`,
     },
     /** 默认 disclaimer 兜底文案（服务端没给时显示） */
-    disclaimerFallback: '本结果基于单张照片的相机响应估计，不能替代分光测色仪或专业色彩顾问。',
+    disclaimerFallback: '结果只根据这一张照片估出来，和仪器实测会有差别。',
   },
 
   /* ───────── 置信度不足 → 物理试色引导（说法待定稿） ───────── */

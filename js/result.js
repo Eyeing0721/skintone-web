@@ -29,8 +29,9 @@ function esc(s) {
 }
 
 function depthLabel(value) {
-  const label = R.depthLabels[value];
-  return label ? `${label}（${value}）` : value || EMPTY;
+  // 只回中文。之前把枚举值也拼在后面（"中等（intermediate）"），是给开发者看的，
+  // 摆在用户面前只会显得不专业。
+  return R.depthLabels[value] || value || EMPTY;
 }
 
 function depthRange(value) {
@@ -56,7 +57,7 @@ function swatch(hex, name, sub) {
   const safe = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(hex || '')) ? hex : '#777777';
   const ink = readableInk(safe);
   return `<div class="swatch" style="background:${esc(safe)};color:${ink}">
-      <span class="swatch-name">${esc(name || EMPTY)}</span>
+      ${name ? `<span class="swatch-name">${esc(name)}</span>` : ''}
       <span class="swatch-hex">${esc(safe)}</span>
       ${sub ? `<span class="swatch-sub">${esc(sub)}</span>` : ''}
     </div>`;
@@ -68,21 +69,13 @@ function swatch(hex, name, sub) {
 
 function heroCard(r) {
   const skin = r.skin || {};
+  const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(skin.hex || '')) ? skin.hex : '#8a8a8a';
+  const ink = readableInk(hex);
   return `<section class="card hero">
-    <div class="hero-main">
-      <div class="metric-big">
-        <span class="metric-label">${esc(R.itaLabel)}</span>
-        <span class="metric-value">${nf(skin.itaDeg, 1)}<small>°</small></span>
-      </div>
-      <div class="hero-side">
-        <div class="tag tag-depth">${esc(depthLabel(skin.depthClass))}</div>
-        <div class="muted small">${esc(depthRange(skin.depthClass))}</div>
-      </div>
-    </div>
-    <div class="hero-sub">
-      <div><span class="muted small">${esc(R.undertoneLabel)}</span><b>${esc(undertoneLabel(skin.undertone && skin.undertone.label))}</b></div>
-      <div><span class="muted small">${esc(R.hueLabel)}</span><b>${nf(skin.hueAngleDeg, 1)}°</b></div>
-      <div><span class="muted small">${esc(R.chromaLabel)}</span><b>${nf(skin.chroma, 2)}</b></div>
+    <div class="hero-swatch" style="background:${esc(hex)};color:${ink}">
+      <b>${esc(depthLabel(skin.depthClass))}</b>
+      <span>${esc(R.undertoneLabel)} ${esc(undertoneLabel(skin.undertone && skin.undertone.label))}</span>
+      <span class="hero-swatch-hex">${esc(hex)}</span>
     </div>
   </section>`;
 }
@@ -273,37 +266,22 @@ function adviceCard(r) {
     <h3 class="sub">${esc(R.cards.recommended)}</h3>
     <div class="swatches">${
       palette.length
-        ? palette
-            .map((p) => {
-              const lab = Array.isArray(p.lab) ? p.lab : null;
-              const derived = !lab && p.hex ? hexToLab(p.hex) : null;
-              const info = lab
-                ? `L*${Number(lab[0]).toFixed(1)} a*${Number(lab[1]).toFixed(1)} b*${Number(lab[2]).toFixed(1)}`
-                : derived
-                  ? `L*${derived.L.toFixed(1)} a*${derived.a.toFixed(1)} b*${derived.b.toFixed(1)}${R.cards.labPreviewSub}`
-                  : '';
-              return swatch(p.hex, p.name, info);
-            })
-            .join('')
+        ? palette.map((p) => swatch(p.hex, p.name, '')).join('')
         : `<p class="muted small">${esc(R.cards.noPalette)}</p>`
     }</div>
     <h3 class="sub">${esc(R.cards.avoid)}</h3>
     <div class="swatches">${
       avoid.length
         ? avoid
-            .map((p) => {
-              const lab = Array.isArray(p.lab) ? p.lab : hexToLab(p.hex);
-              const hue = lab ? hueAngleDeg({ L: lab[0], a: lab[1], b: lab[2] }) : null;
-              const c = lab ? chroma({ L: lab[0], a: lab[1], b: lab[2] }) : null;
-              const sub = `h_ab ${hue === null ? EMPTY : `${hue.toFixed(0)}°`} · C* ${c === null ? EMPTY : c.toFixed(1)}`;
-              return `<div class="avoid-item">${swatch(p.hex, p.name || p.hex, sub)}${
-                p.reason ? `<p class="reason">${esc(p.reason)}</p>` : ''
-              }</div>`;
-            })
+            .map(
+              (p) =>
+                `<div class="avoid-item">${swatch(p.hex, p.name || '', '')}${
+                  p.reason ? `<p class="reason">${esc(p.reason)}</p>` : ''
+                }</div>`,
+            )
             .join('')
         : `<p class="muted small">${esc(R.cards.noAvoid)}</p>`
     }</div>
-    <p class="muted tiny">${esc(R.cards.adviceRuleNote)}</p>
   </section>`;
 }
 
@@ -347,19 +325,13 @@ function warningsCard(r) {
 function metaCard(r) {
   const created = r.createdAt ? new Date(r.createdAt) : null;
   const when = created && !Number.isNaN(created.getTime()) ? created.toLocaleString() : EMPTY;
-  const specMismatch = r.specVersion && r.specVersion !== SPEC_VERSION;
+  // 只保留"这次测量是什么时候"和删除入口——requestId / 版本号是给接口使用者的，
+  // 不是给用户看的（契约 §0 的两套受众：界面给人话，API 给技术细节）。
   return `<section class="card meta">
-    <header class="card-head"><h2>${esc(R.cards.meta)}</h2></header>
-    <div class="kv-grid">
-      <div><span class="muted small">${esc(F.requestId)}</span><b class="mono">${esc(r.requestId || EMPTY)}</b></div>
-      <div><span class="muted small">${esc(F.mode)}</span><b>${esc(r.mode || EMPTY)}</b></div>
-      <div><span class="muted small">${esc(F.time)}</span><b>${esc(when)}</b></div>
-      <div><span class="muted small">${esc(F.serverVersion)}</span><b>${esc(r.serverVersion || EMPTY)}</b></div>
-      <div><span class="muted small">${esc(F.specVersion)}</span><b class="${
-        specMismatch ? 'bad' : ''
-      }">${esc(r.specVersion || EMPTY)}</b></div>
-    </div>
-    ${specMismatch ? `<p class="warn-box">${esc(R.cards.specMismatch(r.specVersion, SPEC_VERSION))}</p>` : ''}
+    <header class="card-head">
+      <h2>${esc(R.cards.meta)}</h2>
+      ${when ? `<span class="muted small">${esc(when)}</span>` : ''}
+    </header>
     <div class="row gap meta-actions">
       <button class="btn" data-action="delete-result" data-id="${esc(r.requestId || '')}">${esc(
         COPY.resultStep.deleteButton,
@@ -394,19 +366,23 @@ export function renderResult(root, r) {
     }
   };
 
+  /*
+    只渲染面向用户的内容。
+    契约 §0 划了两套受众：**界面给人话与结论，技术细节留给 API 和仓库**。
+    置信度门禁表、CIELAB 三轴、光源色温、概率条与黑色素/血红素指数都不上屏——
+    它们各自是可靠的工程信号，但摆在用户面前只会让产品显得不专业。
+    后端的 warnings 同理：里面混着"光源估计使用的候选来源：background"这类
+    工程信息，只留在接口响应里；用户该看到的"这次没测准、去专柜试三条"由
+    confidence.level 驱动下面那张卡片来表达。
+    下面几个 *Card 函数暂时保留但不再调用，属待清理的死代码。
+  */
   blocks.push(safe('hero', () => heroCard(r)));
-  blocks.push(safe('confidence', () => confidenceCard(r)));
-  if (level === 'insufficient') {
-    // 契约：insufficient 时 advice 必须为 null → 物理试色引导就是最终结论
-    blocks.push(safe('physical', () => (noAdvice ? physicalTestCard(r) : adviceCard(r))));
+  if (level === 'insufficient' || noAdvice) {
+    // 契约：insufficient 时 advice 为 null → 物理试色引导就是最终结论
+    blocks.push(safe('physical', () => physicalTestCard(r)));
   } else {
-    blocks.push(safe('undertone', () => undertoneCard(r)));
-    blocks.push(safe('lab', () => labCard(r)));
     blocks.push(safe('advice', () => adviceCard(r)));
-    blocks.push(safe('illuminant', () => illuminantCard(r)));
   }
-  if (noAdvice && level !== 'insufficient') blocks.push(safe('physical', () => physicalTestCard(r)));
-  blocks.push(safe('warnings', () => warningsCard(r)));
   blocks.push(safe('meta', () => metaCard(r)));
 
   root.innerHTML = `<div class="result-view">${blocks.filter(Boolean).join('')}
