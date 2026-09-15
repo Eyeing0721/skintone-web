@@ -174,9 +174,9 @@ export const COPY = {
   roiStep: {
     /** 三个 ROI 区域的显示名与提示（key 与 config.js 的 ROI_REGIONS 对齐） */
     regions: {
-      jaw: { label: '下颌', hint: '沿下颌线画一小块平滑皮肤，避开嘴唇与痘印' },
-      neck: { label: '颈部', hint: '画颈侧一小块，避开衣领阴影' },
-      'gray-card': { label: '色卡（可选）', hint: '圈住参考卡中的任一灰色块，用于交叉校验' },
+      jaw: { label: '脸颊 / 下颌', hint: '点一下脸颊上光滑的一块皮肤' },
+      neck: { label: '颈部', hint: '点一下颈侧，避开衣领的阴影' },
+      'gray-card': { label: '色卡（可选）', hint: '点一下参考卡上的灰色块' },
     },
     undo: '撤销一点',
     clearRegion: (label) => `清空${label}`,
@@ -186,12 +186,13 @@ export const COPY = {
     clearedToast: '已清空所有标注。',
     nothingToUndo: '这个区域还没有点。',
     nothingToClear: '这个区域还没有点。',
-    interactionHint: '点选加点 · 拖动顶点微调 · 至少要 3 个点',
+    interactionHint: '在皮肤上点一下就行 · 拖边缘可以微调',
+    markHint: '拖动可直接移动这一块',
     statusComplete: '下颌与颈部都已标注，可以开始分析。',
-    statusTodo: '下颌与颈部各至少 3 个点；也可以直接跳过，让服务端自动识别。',
+    statusTodo: '在脸颊或脖子上点一下就能取样；也可以直接跳过，让它自动识别。',
     /** 画布下方针对当前区域的提示，{label}/{hint} 由 ROI 定义提供 */
     regionHint: (label, hint, count, closed) =>
-      `${label}：${hint}${closed ? '（已闭合，可以继续拖动顶点微调）' : `（已点 ${count} 个点，至少 3 个才成面）`}`,
+      `${label}：${hint}${closed ? '（已放好，拖边缘可微调）' : '（还没放样本）'}`,
   },
 
   /* ───────── 第 4 步：结果 ───────── */
@@ -357,7 +358,7 @@ export const COPY = {
     },
     ROI_TOO_SMALL: {
       message: '标注的区域太小，凑不出足够的皮肤像素。',
-      hint: '回到标注步把多边形画大一点，或直接跳过让服务端自动识别。',
+      hint: '回到标注步，在皮肤上再点一下（或直接跳过让服务端自动识别）。',
     },
     FACE_NOT_FOUND: {
       message: '画面里没找到人脸。',

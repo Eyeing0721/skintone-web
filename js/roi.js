@@ -60,6 +60,36 @@ class Region {
 /**
  * 画布上的多边形编辑器。
  */
+/* ------------------------------------------------------------------ */
+/* 取样几何                                                            */
+/* ------------------------------------------------------------------ */
+
+/**: 一次点击生成的默认取样半径（相对图片短边） */
+const SAMPLE_RADIUS_RATIO = 0.09;
+/**: 圆形取样区的顶点数；越多越圆，8 个已足够且导出更短 */
+const SAMPLE_SEGMENTS = 20;
+
+/** 以 (cx, cy) 为心生成一个闭合的圆形多边形。 */
+function circlePolygon(cx, cy, radius, segments) {
+  const points = [];
+  for (let i = 0; i < segments; i += 1) {
+    const angle = (i / segments) * Math.PI * 2;
+    points.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]);
+  }
+  return points;
+}
+
+/** 多边形顶点均值。 */
+function centroid(points) {
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y] of points) {
+    sx += x;
+    sy += y;
+  }
+  return [sx / points.length, sy / points.length];
+}
+
 export class RoiEditor {
   /**
    * @param {HTMLCanvasElement} canvas 承载显示与交互的 canvas
@@ -106,6 +136,47 @@ export class RoiEditor {
     this._emit();
   }
 
+  /**
+   * 在图片坐标处放一块**圆形取样区**（自动闭合）。
+   *
+   * 为什么不是"画多边形"：原流程要求先点「颈部」那个小框选中区域，再画满
+   * 3 个点、还要闭合——实测用户觉得反直觉。改成一次点击就得到一块可直接使用
+   * 的圆形 ROI：圆天然闭合，不需要点数，也不需要先选区域。
+   * 再点一次同一个地方 = 移动这块样本；点到另一处 = 放到空的那个区域上。
+   */
+  placeSample(ix, iy) {
+    if (!this.source) return null;
+    const region = this._regionForTap(ix, iy);
+    const base = SAMPLE_RADIUS_RATIO * Math.min(this.source.width, this.source.height);
+    // 贴着画面边缘点击时收窄半径，避免样本大半落在图片外
+    const room = Math.min(ix, iy, this.source.width - ix, this.source.height - iy);
+    const radius = Math.max(8, Math.min(base, room));
+    region.points = circlePolygon(ix, iy, radius, SAMPLE_SEGMENTS);
+    this.activeKey = region.key;
+    for (const r of this.regions) r.selected = r.key === region.key;
+    this.draw();
+    this._emit();
+    return region;
+  }
+
+  /** 这一击该落进哪个区域：优先空着的皮肤区域，否则离点击最近的那个。 */
+  _regionForTap(ix, iy) {
+    const empty = this.regions.find((r) => r.group === 'skin' && !r.points.length);
+    if (empty) return empty;
+    let best = this.active;
+    let bestDistance = Infinity;
+    for (const r of this.regions) {
+      if (r.group !== 'skin' || !r.points.length) continue;
+      const [cx, cy] = centroid(r.points);
+      const distance = Math.hypot(cx - ix, cy - iy);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = r;
+      }
+    }
+    return best;
+  }
+
   /** 撤销当前区域的上一个点 */
   undo() {
     const r = this.active;
@@ -144,9 +215,13 @@ export class RoiEditor {
       }));
   }
 
-  /** 是否所有必填区域都已闭合 */
+  /**
+   * 是否已经够用。
+   * 只需要**一块**皮肤样本——服务端是按多边形取中位数，一块就够；两块更稳，
+   * 但不是必需。原来要求下颌与颈部都闭合，对用户是多余的门槛。
+   */
   isComplete() {
-    return this.regions.filter((r) => r.required).every((r) => r.closed);
+    return this.regions.some((r) => r.group === 'skin' && r.closed);
   }
 
   /** 每个区域的点数，供 UI 显示 */
@@ -268,9 +343,7 @@ export class RoiEditor {
       const [ix, iy] = this.toImage(pt);
       // 图片外的点直接丢弃：服务端按原图像素解读，越界点是无效 ROI
       if (ix < 0 || iy < 0 || ix > this.source.width || iy > this.source.height) return;
-      this.active.points.push([ix, iy]);
-      this.draw();
-      this._emit();
+      this.placeSample(ix, iy);
     };
     this._onMove = (ev) => {
       if (!this.drag) return;
