@@ -186,16 +186,18 @@
 
         <p id="capture-info" class="muted tiny"></p>
 
+        <!--
+          一键同意：实质内容（照片去哪、留多久、怎么删、指纹、第三方）
+          全部写在 privacy.html，页面上只留一行勾选，不铺技术说明。
+        -->
         <div class="consent">
           <label class="check">
             <input id="consent-store" type="checkbox" />
-            <span>
-              <b data-copy="consent.labelStrong"></b>
-              <span data-copy="consent.labelSuffix"></span>
+            <span class="consent-label">
+              <span data-copy="consent.labelStrong"></span><a class="inline-link" href="privacy.html" target="_blank" rel="noopener" data-copy="consent.policyLink"></a>
             </span>
           </label>
           <p id="consent-line" class="muted tiny"></p>
-          <p class="muted tiny" data-copy="consent.privacyNote"></p>
         </div>
       </section>
 

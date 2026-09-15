@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <!-- 措辞待项目所有者定稿。以下内容逐条对应代码的真实行为，不是模板套话。 -->
+    <title>隐私条款 · skintone</title>
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" href="assets/favicon.svg" />
+  </head>
+  <body class="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <path d="M3.2 12h17.6" stroke="currentColor" stroke-width="1.6" />
+          <path d="M12 3.2c-3.2 3-3.2 14.6 0 17.6" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55" />
+        </svg>
+        <div class="brand-text">
+          <b>隐私条款</b>
+          <span>你的照片会怎么被处理</span>
+        </div>
+      </div>
+      <a class="btn sm ghost" href="index.html">返回</a>
+    </header>
+
+    <main class="content">
+      <article class="doc">
+        <h1>你的照片会怎么被处理</h1>
+        <p class="doc-lead">
+          这一页讲清楚一件事：你上传的那张照片去了哪里、留多久、怎么删。
+          没有账号，没有第三方统计，也没有广告。
+        </p>
+
+        <h2>1. 你上传的照片</h2>
+        <ul>
+          <li>照片会发到本服务自己的服务器上做测量，不经过任何第三方云服务。</li>
+          <li>测量要用到照片里的像素值，所以压缩上传时保留的是颜色信息，不裁剪画面。</li>
+          <li>测量完成后，照片<b>是否留在服务器上，取决于你上传前那个勾选框</b>：
+            <ul>
+              <li><b>勾选</b>：照片会归档保存，方便你之后回看这次结果。</li>
+              <li><b>取消勾选</b>：照片只在内存里处理完就丢弃，不写入磁盘，服务器上只留去掉了照片的测量结果。</li>
+            </ul>
+          </li>
+        </ul>
+
+        <h2>2. 保存的话，留多久</h2>
+        <ul>
+          <li>默认保留 30 天，到期自动清理。</li>
+          <li>保存前会剥掉照片自带的拍摄信息（机型、GPS 等），只保留方向和拍摄时间——后者用于判断照片有没有被系统旋转过。</li>
+          <li>结果页上有删除按钮，随时可以自己删掉这一次的记录和照片。</li>
+        </ul>
+
+        <h2>3. 每天的次数限制</h2>
+        <ul>
+          <li>为了挡住批量刷和陌生人塞满这台机器的磁盘，每个人每天有测量次数上限。</li>
+          <li>识别方式是浏览器指纹（由浏览器型号、屏幕尺寸、时区这类信息算出的一串编号），
+            服务端只保存它的哈希值，<b>不保存原始值，也不使用你的 IP 地址</b>。</li>
+          <li>这个编号每天更换一次，所以它不会变成一个长期跟踪你的标识。</li>
+        </ul>
+
+        <h2>4. 第三方会看到什么</h2>
+        <ul>
+          <li>本站通过 Cloudflare 的隧道对外提供服务。因此 Cloudflare 会看到流量的元数据
+            （例如访问时间、来源 IP），但看不到照片内容——照片是加密传输后才解开的。</li>
+          <li>除此之外没有任何第三方：没有统计脚本、没有广告、没有社交插件。</li>
+        </ul>
+
+        <h2>5. 我们不会做的事</h2>
+        <ul>
+          <li>不把照片用于人脸识别、身份识别或任何形式的模型训练。</li>
+          <li>不出售、不共享你的照片或测量结果。</li>
+          <li>不建立与你真实身份的关联——本站没有账号系统，也不知道你是谁。</li>
+        </ul>
+
+        <h2>6. 关于测量结果</h2>
+        <p>
+          结果来自对单张照片的相机响应估计，会受到光线、手机型号和拍摄方式的影响。
+          它不能替代分光测色仪或专业色彩顾问，也不是医疗建议。
+          如果你要据此买粉底，建议再到专柜在颌线试三条色号对照一下。
+        </p>
+
+        <h2>7. 源码</h2>
+        <p>
+          前端与后端都是开源的，上面写的每一条都能在代码里核对：
+          <a class="inline-link" href="https://github.com/Eyeing0721/skintone-serve" target="_blank" rel="noopener">skintone-serve</a>
+          ·
+          <a class="inline-link" href="https://github.com/Eyeing0721/skintone-web" target="_blank" rel="noopener">skintone-web</a>
+        </p>
+
+        <p class="doc-foot">最后更新：2026-09-15</p>
+      </article>
+    </main>
+
+    <footer class="navbar">
+      <a class="btn ghost" href="index.html" style="grid-column: 1 / -1;">返回测量</a>
+    </footer>
+  </body>
+</html>

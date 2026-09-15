@@ -449,6 +449,38 @@ body.app > .topbar { z-index: 40; }
 .check input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent); flex: 0 0 auto; }
 .consent p { margin: 6px 0 0; }
 
+/* 同意区：一行勾选 + 指向隐私条款的链接 */
+.consent-label { line-height: 1.5; }
+
+.inline-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.inline-link:hover { color: var(--ink); }
+
+/* ── 文档页（隐私条款这类纯文本） ─────────────────────────────────── */
+.doc { max-width: 62ch; }
+.doc h1 { margin: 0 0 10px; font-family: var(--serif); font-size: clamp(26px, 7vw, 34px); font-weight: 700; letter-spacing: -0.015em; }
+.doc-lead { margin: 0 0 22px; font-size: 15px; color: var(--ink-2); }
+
+.doc h2 {
+  margin: 26px 0 8px;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.doc p { margin: 0 0 12px; }
+.doc ul { margin: 0 0 12px; padding-left: 20px; }
+.doc li { margin-bottom: 6px; }
+.doc ul ul { margin: 6px 0 0; }
+.doc b { font-weight: 700; }
+.doc-foot { margin-top: 30px; font-size: 12px; color: var(--muted-2); }
+
 /* ── 9. 第 3 步：ROI 标注 ──────────────────────────────────────────── */
 .roi-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
