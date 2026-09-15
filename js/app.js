@@ -70,7 +70,7 @@ const state = {
   previewUrl: '',
   storeImage: COPY.consent.defaultStoreImage,
   acceptedAt: '',
-  illuminantGuess: 'unknown',
+  illuminantGuess: ILLUMINANT_VALUES[0],
   cardProfileId: '',
   editor: null,
   lastResult: null,
@@ -218,7 +218,8 @@ function initModeStep() {
       }),
     );
     const saved = localStorage.getItem(STORAGE_KEYS.illuminantGuess);
-    sel.value = saved && ILLUMINANT_VALUES.includes(saved) ? saved : 'unknown';
+    // 默认取列表第一项（config.js：屏幕光 + 室内灯）——自拍的现实场景
+    sel.value = saved && ILLUMINANT_VALUES.includes(saved) ? saved : ILLUMINANT_VALUES[0];
     state.illuminantGuess = sel.value;
     sel.addEventListener('change', () => {
       state.illuminantGuess = sel.value;

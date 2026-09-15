@@ -90,6 +90,15 @@ function centroid(points) {
   return [sx / points.length, sy / points.length];
 }
 
+/** 从圆形顶点还原圆心与半径（圆心 = 质心，半径 = 到质心的平均距离）。 */
+function circleOf(points) {
+  if (!points || points.length < 3) return null;
+  const [cx, cy] = centroid(points);
+  let total = 0;
+  for (const [x, y] of points) total += Math.hypot(x - cx, y - cy);
+  return { cx, cy, r: total / points.length };
+}
+
 export class RoiEditor {
   /**
    * @param {HTMLCanvasElement} canvas 承载显示与交互的 canvas
@@ -175,6 +184,53 @@ export class RoiEditor {
       }
     }
     return best;
+  }
+
+  /** 半径手柄的位置：圆的 3 点钟方向（屏幕坐标）。 */
+  _knobPoint(region) {
+    const circle = circleOf(region.points);
+    if (!circle) return null;
+    return this.toScreen([circle.cx + circle.r, circle.cy]);
+  }
+
+  /** 这一击是否抓住了半径手柄。 */
+  _hitRadiusKnob([sx, sy]) {
+    const reach = ROI_GEOMETRY.hitRadius + 8;
+    const order = [this.active, ...this.regions.filter((r) => r !== this.active)];
+    for (const region of order) {
+      if (region.group !== 'skin' || !region.closed) continue;
+      const knob = this._knobPoint(region);
+      if (knob && Math.hypot(knob[0] - sx, knob[1] - sy) <= reach) return { region };
+    }
+    return null;
+  }
+
+  /** 这一击落在哪一块已有样本里（用于整块搬走）。 */
+  _regionAt([sx, sy]) {
+    const [ix, iy] = this.toImage([sx, sy]);
+    for (const region of this.regions) {
+      if (region.group !== 'skin') continue;
+      const circle = circleOf(region.points);
+      if (circle && Math.hypot(ix - circle.cx, iy - circle.cy) <= circle.r) return region;
+    }
+    return null;
+  }
+
+  /**
+   * 只改半径，圆心不动——拖半径手柄时用。
+   * 结果仍是一块正圆，所以导出给服务端的多边形始终是闭合且规则的。
+   */
+  setRadius(region, radius) {
+    if (!this.source) return;
+    const circle = circleOf(region.points);
+    if (!circle) return;
+    const base = SAMPLE_RADIUS_RATIO * Math.min(this.source.width, this.source.height);
+    // 上限：不超过默认半径的 4 倍，也不越过画面边缘
+    const room = Math.min(circle.cx, circle.cy, this.source.width - circle.cx, this.source.height - circle.cy);
+    const upper = Math.max(12, Math.min(room, base * 4));
+    const clamped = Math.max(8, Math.min(radius, upper));
+    region.points = circlePolygon(circle.cx, circle.cy, clamped, SAMPLE_SEGMENTS);
+    this.draw();
   }
 
   /** 撤销当前区域的上一个点 */
@@ -313,6 +369,20 @@ export class RoiEditor {
         ctx.lineWidth = 2;
         ctx.stroke();
       }
+      // 半径手柄：一个明显更大的白边圆点，拖它就能改半径。
+      // 放在圆上而不是另做一条滑杆——少一个控件，而且位置本身就是提示。
+      if (region.selected && region.group === 'skin' && region.closed) {
+        const knob = this._knobPoint(region);
+        if (knob) {
+          ctx.beginPath();
+          ctx.arc(knob[0], knob[1], 9, 0, Math.PI * 2);
+          ctx.fillStyle = regionColor('vertex-ink', '#101418');
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
+      }
       if (region.selected && pts.length) {
         const [lx, ly] = pts[pts.length - 1];
         ctx.beginPath();
@@ -334,21 +404,66 @@ export class RoiEditor {
       if (!this.source) return;
       ev.preventDefault();
       const pt = this._eventPoint(ev);
+
+      // 1) 抓住半径手柄 → 只改半径，圆心不动
+      const knob = this._hitRadiusKnob(pt);
+      if (knob) {
+        this.radiusDrag = knob;
+        c.setPointerCapture?.(ev.pointerId);
+        return;
+      }
+      // 2) 抓住某个顶点 → 微调形状
       const hit = this._hitVertex(pt);
       if (hit) {
         this.drag = { region: hit.region, index: hit.index, moved: false };
         c.setPointerCapture?.(ev.pointerId);
         return;
       }
+      // 3) 点在已有样本内部 → 整块搬走
+      const inside = this._regionAt(pt);
+      if (inside) {
+        this.moveDrag = {
+          region: inside,
+          from: this.toImage(pt),
+          origin: inside.points.map((p) => [p[0], p[1]]),
+          moved: false,
+        };
+        c.setPointerCapture?.(ev.pointerId);
+        return;
+      }
+      // 4) 否则：**第一下点击 = 定圆心**，先给一个默认半径，随后拖白点挑半径
       const [ix, iy] = this.toImage(pt);
       // 图片外的点直接丢弃：服务端按原图像素解读，越界点是无效 ROI
       if (ix < 0 || iy < 0 || ix > this.source.width || iy > this.source.height) return;
       this.placeSample(ix, iy);
     };
     this._onMove = (ev) => {
+      if (!this.source) return;
+      const pt = this._eventPoint(ev);
+
+      if (this.radiusDrag) {
+        ev.preventDefault();
+        const [ix, iy] = this.toImage(pt);
+        const circle = circleOf(this.radiusDrag.region.points);
+        if (circle) this.setRadius(this.radiusDrag.region, Math.hypot(ix - circle.cx, iy - circle.cy));
+        return;
+      }
+      if (this.moveDrag) {
+        ev.preventDefault();
+        const [ix, iy] = this.toImage(pt);
+        const dx = ix - this.moveDrag.from[0];
+        const dy = iy - this.moveDrag.from[1];
+        this.moveDrag.region.points = this.moveDrag.origin.map(([x, y]) => [
+          Math.max(0, Math.min(this.source.width, x + dx)),
+          Math.max(0, Math.min(this.source.height, y + dy)),
+        ]);
+        this.moveDrag.moved = true;
+        this.draw();
+        return;
+      }
       if (!this.drag) return;
       ev.preventDefault();
-      const [ix, iy] = this.toImage(this._eventPoint(ev));
+      const [ix, iy] = this.toImage(pt);
       this.drag.region.points[this.drag.index] = [
         Math.max(0, Math.min(this.source.width, ix)),
         Math.max(0, Math.min(this.source.height, iy)),
@@ -357,9 +472,15 @@ export class RoiEditor {
       this.draw();
     };
     this._onUp = (ev) => {
-      if (!this.drag) return;
-      const moved = this.drag.moved;
+      if (!this.drag && !this.radiusDrag && !this.moveDrag) return;
+      const moved = Boolean(
+        (this.drag && this.drag.moved) ||
+          this.radiusDrag ||
+          (this.moveDrag && this.moveDrag.moved),
+      );
       this.drag = null;
+      this.radiusDrag = null;
+      this.moveDrag = null;
       c.releasePointerCapture?.(ev.pointerId);
       if (moved) this._emit();
     };

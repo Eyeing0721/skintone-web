@@ -84,11 +84,10 @@ export const COPY = {
   /* ───────── 第 1 步：模式选择 ───────── */
   /** 光源先验的中文标签（取值见 config.js 的 ILLUMINANT_VALUES） */
   illuminantLabels: {
-    daylight: '日光 / 窗边自然光',
-    shade: '阴影 / 阴天',
-    tungsten: '白炽灯 / 暖黄灯',
-    fluorescent: '荧光灯 / 日光灯',
-    led: 'LED 灯',
+    screen: '屏幕光 + 室内灯',
+    daylight: '窗边自然光',
+    tungsten: '暖黄灯',
+    fluorescent: '白日光灯',
     unknown: '不确定',
   },
 
@@ -186,13 +185,12 @@ export const COPY = {
     clearedToast: '已清空所有标注。',
     nothingToUndo: '这个区域还没有点。',
     nothingToClear: '这个区域还没有点。',
-    interactionHint: '在皮肤上点一下就行 · 拖边缘可以微调',
-    markHint: '拖动可直接移动这一块',
+    interactionHint: '点一下定圆心 · 拖白点挑半径',
     statusComplete: '下颌与颈部都已标注，可以开始分析。',
-    statusTodo: '在脸颊或脖子上点一下就能取样；也可以直接跳过，让它自动识别。',
+    statusTodo: '在脸颊或脖子上点一下定圆心，再拖白点挑大小。也可以直接跳过，让它自动识别。',
     /** 画布下方针对当前区域的提示，{label}/{hint} 由 ROI 定义提供 */
     regionHint: (label, hint, count, closed) =>
-      `${label}：${hint}${closed ? '（已放好，拖边缘可微调）' : '（还没放样本）'}`,
+      `${label}：${hint}${closed ? '（拖白点可改半径）' : '（先点一下定圆心）'}`,
   },
 
   /* ───────── 第 4 步：结果 ───────── */

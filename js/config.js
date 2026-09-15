@@ -74,7 +74,20 @@ export const DEFAULT_CARD_ID = 'skintone-a4-v1';
 export const DEFAULT_CARD_PROFILE_ID = 'my-card-001';
 
 /** 光源先验取值（契约 §2.3 capture.illuminantGuess）；中文标签在 copy.js */
-export const ILLUMINANT_VALUES = Object.freeze(['daylight', 'shade', 'tungsten', 'fluorescent', 'led', 'unknown']);
+/**
+ * 这张照片的光源（契约 §2.3 capture.illuminantGuess）。
+ *
+ * **默认是"屏幕光 + 室内灯"**：这个网页的使用场景就是自拍——人对着电脑或手机
+ * 屏幕，屋里还开着一盏灯。最该猜对的情况不该丢给算法，所以它排第一，也是默认值。
+ * 其余按"离自拍场景的远近"排列。`shade` / `led` 后端仍然接受，只是不再上屏。
+ */
+export const ILLUMINANT_VALUES = Object.freeze([
+  'screen',
+  'daylight',
+  'tungsten',
+  'fluorescent',
+  'unknown',
+]);
 
 /**
  * ROI 区域定义（契约 §2.3 rois）。
