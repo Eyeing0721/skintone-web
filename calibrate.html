@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <!-- 文案由 js/copy.js + js/copy-hydrate.js 填充；本文件只放结构与 data-copy 标记 -->
+    <title>skintone</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="assets/favicon.svg" />
+  </head>
+  <body class="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <path d="M3.5 12h17M12 3.5v17" stroke="currentColor" stroke-width="1" opacity=".5" />
+          <circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" />
+        </svg>
+        <div class="brand-text">
+          <b data-copy="calibratePage.title"></b>
+          <span class="muted small" data-copy="calibratePage.tagline"></span>
+        </div>
+      </div>
+      <a class="btn sm ghost" href="index.html" data-copy="calibratePage.back"></a>
+    </header>
+
+    <main class="content">
+      <p class="hint-box" data-copy="calibratePage.intro"></p>
+
+      <section class="card">
+        <header class="card-head"><h2 data-copy="calibratePage.step1"></h2></header>
+        <div class="kv-grid">
+          <label class="field">
+            <span data-copy="calibratePage.cardIdLabel"></span>
+            <input id="card-id" type="text" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span data-copy="calibratePage.profileLabel"></span>
+            <input id="profile-id" type="text" spellcheck="false" data-copy-placeholder="calibratePage.profilePlaceholder" />
+          </label>
+          <label class="field">
+            <span data-copy="calibratePage.illuminantLabel"></span>
+            <select id="illuminant"></select>
+          </label>
+        </div>
+        <p class="muted tiny">
+          <span data-copy="calibratePage.printFirst"></span>
+        </p>
+      </section>
+
+      <section class="card">
+        <header class="card-head"><h2 data-copy="calibratePage.step2"></h2></header>
+        <div class="stage">
+          <video id="video" playsinline muted hidden></video>
+          <img id="preview" alt="" hidden />
+          <div id="capture-empty" class="stage-empty">
+            <p data-copy="calibratePage.captureHint"></p>
+          </div>
+        </div>
+        <div class="row gap wrap stage-actions">
+          <button id="btn-camera" class="btn" type="button" data-copy="captureStep.openCamera"></button>
+          <button id="btn-shutter" class="btn primary" type="button" hidden data-copy="captureStep.shutter"></button>
+          <label class="btn file-btn">
+            <span data-copy="captureStep.chooseFile"></span>
+            <input id="file-input" type="file" accept="image/jpeg,image/png" hidden />
+          </label>
+          <button id="btn-close-camera" class="btn ghost" type="button" hidden data-copy="captureStep.closeCamera"></button>
+        </div>
+        <p id="capture-info" class="muted tiny"></p>
+      </section>
+
+      <section class="card">
+        <header class="card-head"><h2 data-copy="calibratePage.step3"></h2></header>
+        <div class="row gap wrap">
+          <button id="btn-calibrate" class="btn primary" type="button" disabled data-copy="calibratePage.calibrateButton"></button>
+          <span class="muted small" data-copy="calibratePage.uploadNote"></span>
+        </div>
+        <div id="calib-result" class="result-view calib-result"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="js/calibrate-page.js"></script>
+  </body>
+</html>

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <!-- 文案由 js/copy.js + js/copy-hydrate.js 填充；本文件只放结构与 data-copy 标记 -->
+    <title>skintone</title>
+    <meta name="description" data-copy-content="page.indexDescription" content="" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="assets/favicon.svg" />
+  </head>
+  <body class="app">
+    <!-- 页面级滚动被禁止：整个 shell 是 100dvh 的 grid，只有 #content 内部可滚 -->
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+          <path d="M3.2 12h17.6" stroke="currentColor" stroke-width="1.6" />
+          <path d="M12 3.2c-3.2 3-3.2 14.6 0 17.6" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55" />
+        </svg>
+        <div class="brand-text">
+          <b data-copy="brand.name"></b>
+          <span id="step-title" class="muted small"></span>
+        </div>
+      </div>
+
+      <details class="settings">
+        <summary data-copy-title="topbar.settingsSummaryTitle">
+          <span id="health-dot" class="dot" data-state="checking"></span>
+          <span class="settings-label" data-copy="topbar.settingsLabel"></span>
+          <svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+        </summary>
+        <div class="settings-panel">
+          <label class="field">
+            <span data-copy="settings.baseLabel"></span>
+            <input id="api-base" type="url" inputmode="url" spellcheck="false" autocomplete="off" data-copy-placeholder="settings.basePlaceholder" />
+          </label>
+          <div class="row gap wrap">
+            <button id="btn-save-api" class="btn primary sm" type="button" data-copy="settings.save"></button>
+            <button id="btn-test-api" class="btn sm" type="button" data-copy="settings.test"></button>
+            <button id="btn-reset-api" class="btn sm" type="button" data-copy="settings.reset"></button>
+          </div>
+          <label class="field" id="api-key-wrap">
+            <span data-copy="settings.keyLabel"></span>
+            <input id="api-key" type="password" spellcheck="false" autocomplete="off" data-copy-placeholder="settings.keyPlaceholder" />
+          </label>
+          <p class="muted tiny" data-copy="settings.keyNote"></p>
+          <p class="muted tiny" data-copy="settings.priorityNote"></p>
+          <p id="health-text" class="muted small"></p>
+          <p class="muted tiny" data-copy="settings.selfHostNote"></p>
+        </div>
+      </details>
+    </header>
+
+    <main id="content" class="content">
+      <!-- ───── 第 1 步：模式 ───── -->
+      <section class="step-panel" data-step="mode">
+        <h1 class="title" data-copy="modeStep.title"></h1>
+        <p class="lead muted" data-copy="modeStep.lead"></p>
+
+        <div class="mode-grid">
+          <button id="mode-nocard" class="mode-card" type="button" data-selected="true">
+            <span class="mode-badge" data-copy="modeStep.nocard.badge"></span>
+            <b data-copy="modeStep.nocard.label"></b>
+            <span class="muted small" data-copy="modeStep.nocard.sub"></span>
+            <span class="muted tiny" data-copy="modeStep.nocard.desc"></span>
+          </button>
+          <button id="mode-card" class="mode-card" type="button" data-selected="false">
+            <span class="mode-badge" data-copy="modeStep.card.badge"></span>
+            <b data-copy="modeStep.card.label"></b>
+            <span class="muted small" data-copy="modeStep.card.sub"></span>
+            <span class="muted tiny" data-copy="modeStep.card.desc"></span>
+          </button>
+        </div>
+
+        <p id="mode-hint" class="hint-box"></p>
+
+        <div class="card-only" hidden>
+          <label class="field">
+            <span data-copy="modeStep.cardProfileLabel"></span>
+            <input id="card-profile" type="text" spellcheck="false" autocomplete="off" data-copy-placeholder="modeStep.cardProfilePlaceholder" />
+          </label>
+          <p class="muted tiny">
+            <span data-copy="modeStep.linksLabel"></span>
+            <a id="card-link" href="card.html" data-copy="modeStep.cardLink"></a> ·
+            <a href="calibrate.html" data-copy="modeStep.calibrateLink"></a>
+          </p>
+        </div>
+
+        <label class="field">
+          <span data-copy="modeStep.illuminantLabel"></span>
+          <select id="illuminant"></select>
+        </label>
+
+        <div class="fine-print">
+          <p class="muted tiny" data-copy="modeStep.finePrint"></p>
+        </div>
+      </section>
+
+      <!-- ───── 第 2 步：采集 ───── -->
+      <section class="step-panel" data-step="capture" hidden>
+        <div class="stage" id="capture-stage">
+          <video id="video" playsinline muted hidden></video>
+          <img id="preview" alt="" hidden />
+          <div id="capture-empty" class="stage-empty">
+            <svg viewBox="0 0 24 24" class="stage-icon" aria-hidden="true">
+              <path d="M4 8.5A2.5 2.5 0 016.5 6h1.2l.9-1.4A1.5 1.5 0 019.9 4h4.2c.56 0 1.08.28 1.38.75l.9 1.25h1.12A2.5 2.5 0 0120 8.5v8A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5v-8z" fill="none" stroke="currentColor" stroke-width="1.5" />
+              <circle cx="12" cy="12.5" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <p data-copy="captureStep.emptyHint"></p>
+          </div>
+        </div>
+
+        <div id="live-controls" class="row gap wrap" hidden>
+          <button id="btn-shutter" class="btn primary" type="button">
+            <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.8" /><circle cx="12" cy="12" r="4" fill="currentColor" /></svg>
+            <span data-copy="captureStep.shutter"></span>
+          </button>
+          <button id="btn-flip" class="btn" type="button" data-copy="captureStep.flip"></button>
+          <button id="btn-cancel-camera" class="btn ghost" type="button" data-copy="captureStep.closeCamera"></button>
+          <span id="camera-info" class="muted small"></span>
+        </div>
+
+        <div class="row gap wrap">
+          <button id="btn-camera" class="btn" type="button" data-copy="captureStep.openCamera"></button>
+          <label class="btn file-btn">
+            <span data-copy="captureStep.chooseFile"></span>
+            <input id="file-input" type="file" accept="image/jpeg,image/png" hidden />
+          </label>
+          <button id="btn-guide-photo" class="btn ghost" type="button" data-copy="captureStep.guideToggle"></button>
+        </div>
+
+        <p id="capture-info" class="muted tiny"></p>
+
+        <div id="guide-photo" class="hint-box" hidden>
+          <b data-copy="captureStep.guideTitle"></b>
+          <ul data-copy-list="captureStep.guideItems"></ul>
+        </div>
+
+        <div class="consent">
+          <label class="check">
+            <input id="consent-store" type="checkbox" />
+            <span>
+              <b data-copy="consent.labelStrong"></b>
+              <span data-copy="consent.labelSuffix"></span>
+            </span>
+          </label>
+          <p id="consent-line" class="muted tiny"></p>
+          <p class="muted tiny" data-copy="consent.privacyNote"></p>
+        </div>
+      </section>
+
+      <!-- ───── 第 3 步：ROI ───── -->
+      <section class="step-panel panel-fill" data-step="roi" hidden>
+        <div class="roi-bar">
+          <div id="roi-regions" class="chips"></div>
+          <div class="row gap wrap">
+            <button id="btn-undo" class="btn sm" type="button" data-copy="roiStep.undo"></button>
+            <button id="btn-clear-region" class="btn sm" type="button"></button>
+            <button id="btn-clear-all" class="btn sm ghost" type="button" data-copy="roiStep.clearAll"></button>
+          </div>
+        </div>
+        <div class="stage stage-roi">
+          <canvas id="roi-canvas"></canvas>
+        </div>
+        <div class="roi-foot">
+          <p id="roi-hint" class="muted tiny"></p>
+          <p id="roi-status" class="muted tiny"></p>
+          <div class="row gap wrap">
+            <button id="btn-skip-roi" class="btn sm" type="button" data-copy="roiStep.skip"></button>
+            <span class="muted tiny" data-copy="roiStep.interactionHint"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ───── 第 4 步：结果 ───── -->
+      <section class="step-panel" data-step="result" hidden>
+        <div class="row gap wrap load-row">
+          <input id="result-id" class="input sm" type="text" spellcheck="false" data-copy-placeholder="resultStep.loadPlaceholder" />
+          <button id="btn-load-result" class="btn sm" type="button" data-copy="resultStep.loadButton"></button>
+        </div>
+        <div id="result-root"></div>
+      </section>
+    </main>
+
+    <footer class="navbar">
+      <button id="btn-back" class="btn ghost" type="button" data-copy="nav.back"></button>
+      <span class="nav-dots">
+        <i class="step-dot" data-step="mode"></i>
+        <i class="step-dot" data-step="capture"></i>
+        <i class="step-dot" data-step="roi"></i>
+        <i class="step-dot" data-step="result"></i>
+      </span>
+      <button id="btn-next" class="btn primary" type="button"></button>
+    </footer>
+
+    <div id="busy" class="busy" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="busy-text"></p>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <p class="sr-only">
+      <span id="spec-version"></span> <span id="client-version"></span>
+    </p>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

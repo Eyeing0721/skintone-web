@@ -1,0 +1,368 @@
+/**
+ * skintone-web / js/roi.js
+ *
+ * ROI 多边形标注（契约 §2.3 rois）：三个区域 = 下颌 / 颈部 / 可选色卡。
+ * 交互：点选加点、撤销上一点、拖动顶点、清空、整块删除，也可以整体跳过让服务端自动识别。
+ *
+ * 坐标系：内部一律用"归一化后的图片像素坐标"（即 capture.prepareCapture 输出的
+ * width/height 坐标系），上传前再由 capture.buildRois 映回原图坐标。
+ *
+ * 显示名与提示语在 js/copy.js（roiStep.regions）；描边颜色在 css/style.css
+ * 的 --roi-jaw / --roi-neck / --roi-card，本模块运行时读取，改配色不用碰 JS。
+ */
+
+import { ROI_REGIONS } from './config.js';
+import { COPY } from './copy.js';
+import { toClockwise } from './capture.js';
+
+/** 顶点手柄/命中半径（CSS px）等交互几何常量 */
+const ROI_GEOMETRY = Object.freeze({
+  activeFillAlpha: 0.22,
+  vertexRadius: 5.5,
+  hitRadius: 16,
+  strokeWidthActive: 2.5,
+  strokeWidthIdle: 1.5,
+  dash: [6, 5],
+  lastPointRingGap: 6,
+});
+
+/** 从 CSS 变量取区域描边色，取不到用兜底色 */
+function regionColor(key, fallback) {
+  if (typeof window === 'undefined' || !document.body) return fallback;
+  const v = getComputedStyle(document.body).getPropertyValue(`--roi-${key}`).trim();
+  return v || fallback;
+}
+
+const FALLBACK_COLORS = { jaw: '#ffb26b', neck: '#6bd3ff', 'gray-card': '#9ef07a' };
+
+/**
+ * 一个区域的可编辑多边形。
+ */
+class Region {
+  constructor(def) {
+    const text = (COPY.roiStep.regions && COPY.roiStep.regions[def.key]) || {};
+    this.key = def.key;
+    this.label = text.label || def.key;
+    this.hint = text.hint || '';
+    this.group = def.group;
+    this.required = Boolean(def.required);
+    this.color = regionColor(def.key, FALLBACK_COLORS[def.key] || '#ffb26b');
+    /** @type {Array<[number,number]>} 归一化图片像素坐标 */
+    this.points = [];
+    this.selected = false;
+  }
+
+  get closed() {
+    return this.points.length >= 3;
+  }
+}
+
+/**
+ * 画布上的多边形编辑器。
+ */
+export class RoiEditor {
+  /**
+   * @param {HTMLCanvasElement} canvas 承载显示与交互的 canvas
+   * @param {{onChange?: (regions: Region[], activeKey: string) => void}} opts
+   */
+  constructor(canvas, opts = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.onChange = opts.onChange || (() => {});
+    this.regions = ROI_REGIONS.map((d) => new Region(d));
+    this.activeKey = ROI_REGIONS[0].key;
+    this.regions[0].selected = true;
+    /** 底图：{width, height, drawable} */
+    this.source = null;
+    /** 视口映射：图片坐标 → CSS 坐标 */
+    this.view = { x: 0, y: 0, scale: 1, cssW: 0, cssH: 0 };
+    this.drag = null;
+    this.dirty = true;
+    this._bindPointer();
+    this._bindResize();
+  }
+
+  /* ---------------- 状态 ---------------- */
+
+  /** 设置底图（已归一化的 canvas / image） */
+  setSource(drawable, width, height) {
+    this.source = { drawable, width, height };
+    this.clearAll(false);
+    this.resize();
+    this.draw();
+    this._emit();
+  }
+
+  /** 当前选中的区域 */
+  get active() {
+    return this.regions.find((r) => r.key === this.activeKey) || this.regions[0];
+  }
+
+  /** 选中某个区域（之后点选都加到它上面） */
+  selectRegion(key) {
+    this.activeKey = key;
+    for (const r of this.regions) r.selected = r.key === key;
+    this.draw();
+    this._emit();
+  }
+
+  /** 撤销当前区域的上一个点 */
+  undo() {
+    const r = this.active;
+    if (!r.points.length) return false;
+    r.points.pop();
+    this.draw();
+    this._emit();
+    return true;
+  }
+
+  /** 清空当前区域 */
+  clearActive() {
+    const r = this.active;
+    if (!r.points.length) return false;
+    r.points = [];
+    this.draw();
+    this._emit();
+    return true;
+  }
+
+  /** 清空全部区域 */
+  clearAll(emit = true) {
+    for (const r of this.regions) r.points = [];
+    this.draw();
+    if (emit) this._emit();
+  }
+
+  /** 导出给上传用的区域数据（只含有 ≥3 个点的区域） */
+  exportRegions() {
+    return this.regions
+      .filter((r) => r.closed)
+      .map((r) => ({
+        label: r.key,
+        group: r.group,
+        points: toClockwise(r.points.map(([x, y]) => [x, y])),
+      }));
+  }
+
+  /** 是否所有必填区域都已闭合 */
+  isComplete() {
+    return this.regions.filter((r) => r.required).every((r) => r.closed);
+  }
+
+  /** 每个区域的点数，供 UI 显示 */
+  summary() {
+    return this.regions.map((r) => ({
+      key: r.key,
+      label: r.label,
+      count: r.points.length,
+      closed: r.closed,
+      required: r.required,
+      selected: r.key === this.activeKey,
+    }));
+  }
+
+  /* ---------------- 渲染 ---------------- */
+
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.getBoundingClientRect();
+    const cssW = Math.max(1, rect.width || this.canvas.clientWidth || 320);
+    const cssH = Math.max(1, rect.height || this.canvas.clientHeight || 320);
+    this.canvas.width = Math.round(cssW * dpr);
+    this.canvas.height = Math.round(cssH * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.view.cssW = cssW;
+    this.view.cssH = cssH;
+    const sw = this.source ? this.source.width : 1;
+    const sh = this.source ? this.source.height : 1;
+    const scale = Math.min(cssW / sw, cssH / sh);
+    this.view.scale = scale;
+    this.view.x = (cssW - sw * scale) / 2;
+    this.view.y = (cssH - sh * scale) / 2;
+    this.dirty = true;
+  }
+
+  /** 图片坐标 → CSS 坐标 */
+  toScreen([x, y]) {
+    return [this.view.x + x * this.view.scale, this.view.y + y * this.view.scale];
+  }
+
+  /** CSS 坐标 → 图片坐标 */
+  toImage([sx, sy]) {
+    return [(sx - this.view.x) / this.view.scale, (sy - this.view.y) / this.view.scale];
+  }
+
+  draw() {
+    const ctx = this.ctx;
+    const g = ROI_GEOMETRY;
+    const { cssW, cssH } = this.view;
+    ctx.clearRect(0, 0, cssW, cssH);
+    if (!this.source) return;
+    const sw = this.source.width * this.view.scale;
+    const sh = this.source.height * this.view.scale;
+    ctx.drawImage(this.source.drawable, this.view.x, this.view.y, sw, sh);
+    ctx.save();
+    ctx.strokeStyle = regionColor('frame', 'rgba(255,255,255,.25)');
+    ctx.lineWidth = 1;
+    ctx.strokeRect(this.view.x + 0.5, this.view.y + 0.5, sw - 1, sh - 1);
+    ctx.restore();
+
+    for (const region of this.regions) {
+      if (!region.points.length) continue;
+      const pts = region.points.map((p) => this.toScreen(p));
+      ctx.save();
+      if (region.closed) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        ctx.fillStyle = withAlpha(region.color, g.activeFillAlpha);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
+      if (region.closed) ctx.closePath();
+      ctx.strokeStyle = region.color;
+      ctx.lineWidth = region.selected ? g.strokeWidthActive : g.strokeWidthIdle;
+      ctx.setLineDash(region.selected ? [] : g.dash);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      for (const [px, py] of pts) {
+        ctx.beginPath();
+        ctx.arc(px, py, region.selected ? g.vertexRadius : g.vertexRadius - 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = regionColor('vertex-ink', '#101418');
+        ctx.fill();
+        ctx.strokeStyle = region.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      if (region.selected && pts.length) {
+        const [lx, ly] = pts[pts.length - 1];
+        ctx.beginPath();
+        ctx.arc(lx, ly, g.vertexRadius + g.lastPointRingGap, 0, Math.PI * 2);
+        ctx.strokeStyle = withAlpha(region.color, 0.55);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  /* ---------------- 交互 ---------------- */
+
+  _bindPointer() {
+    const c = this.canvas;
+    const opts = { passive: false };
+    this._onDown = (ev) => {
+      if (!this.source) return;
+      ev.preventDefault();
+      const pt = this._eventPoint(ev);
+      const hit = this._hitVertex(pt);
+      if (hit) {
+        this.drag = { region: hit.region, index: hit.index, moved: false };
+        c.setPointerCapture?.(ev.pointerId);
+        return;
+      }
+      const [ix, iy] = this.toImage(pt);
+      // 图片外的点直接丢弃：服务端按原图像素解读，越界点是无效 ROI
+      if (ix < 0 || iy < 0 || ix > this.source.width || iy > this.source.height) return;
+      this.active.points.push([ix, iy]);
+      this.draw();
+      this._emit();
+    };
+    this._onMove = (ev) => {
+      if (!this.drag) return;
+      ev.preventDefault();
+      const [ix, iy] = this.toImage(this._eventPoint(ev));
+      this.drag.region.points[this.drag.index] = [
+        Math.max(0, Math.min(this.source.width, ix)),
+        Math.max(0, Math.min(this.source.height, iy)),
+      ];
+      this.drag.moved = true;
+      this.draw();
+    };
+    this._onUp = (ev) => {
+      if (!this.drag) return;
+      const moved = this.drag.moved;
+      this.drag = null;
+      c.releasePointerCapture?.(ev.pointerId);
+      if (moved) this._emit();
+    };
+    c.addEventListener('pointerdown', this._onDown, opts);
+    c.addEventListener('pointermove', this._onMove, opts);
+    c.addEventListener('pointerup', this._onUp);
+    c.addEventListener('pointercancel', this._onUp);
+    // 触屏上禁止默认手势，避免拖动顶点时页面跟着动
+    this._onTouch = (ev) => ev.preventDefault();
+    c.addEventListener('touchstart', this._onTouch, opts);
+  }
+
+  _eventPoint(ev) {
+    const rect = this.canvas.getBoundingClientRect();
+    return [ev.clientX - rect.left, ev.clientY - rect.top];
+  }
+
+  _hitVertex([sx, sy]) {
+    // 选中的区域优先命中；再从最后一个点往回找（后加的点在上层）
+    const radius = ROI_GEOMETRY.hitRadius;
+    const order = [this.active, ...this.regions.filter((r) => r !== this.active)];
+    for (const region of order) {
+      for (let i = region.points.length - 1; i >= 0; i -= 1) {
+        const [px, py] = this.toScreen(region.points[i]);
+        if (Math.hypot(px - sx, py - sy) <= radius) {
+          if (region !== this.active) this.selectRegion(region.key);
+          return { region, index: i };
+        }
+      }
+    }
+    return null;
+  }
+
+  _bindResize() {
+    this._onResize = () => {
+      this.resize();
+      this.draw();
+    };
+    window.addEventListener('resize', this._onResize);
+    if (typeof ResizeObserver === 'function') {
+      this._ro = new ResizeObserver(this._onResize);
+      this._ro.observe(this.canvas);
+    }
+  }
+
+  destroy() {
+    window.removeEventListener('resize', this._onResize);
+    if (this._ro) this._ro.disconnect();
+    const c = this.canvas;
+    c.removeEventListener('pointerdown', this._onDown);
+    c.removeEventListener('pointermove', this._onMove);
+    c.removeEventListener('pointerup', this._onUp);
+    c.removeEventListener('pointercancel', this._onUp);
+    c.removeEventListener('touchstart', this._onTouch);
+  }
+
+  _emit() {
+    if (typeof window !== 'undefined') window.__skintoneRoi = this;
+    this.onChange(this.regions, this.activeKey);
+  }
+}
+
+/** 给颜色加 alpha：支持 #rrggbb 与 rgb()/rgba() 两种输入（颜色可能来自 CSS 变量） */
+function withAlpha(color, alpha) {
+  const c = String(color).trim();
+  const hex = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const h = hex[1];
+    const full = h.length === 3 ? h.split('').map((x) => x + x).join('') : h;
+    const n = parseInt(full, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+  }
+  const rgb = c.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgb) {
+    const parts = rgb[1].split(',').map((v) => v.trim());
+    return `rgba(${parts[0]},${parts[1]},${parts[2]},${alpha})`;
+  }
+  return c;
+}

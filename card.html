@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <!-- 文案由 js/copy.js + js/copy-hydrate.js 填充；本文件只放结构与 data-copy 标记 -->
+    <title>skintone</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/card.css" />
+    <link rel="icon" href="assets/favicon.svg" />
+  </head>
+  <body class="card-page">
+    <div class="card-shell">
+      <aside class="card-panel no-print">
+        <h1 class="title" data-copy="cardPage.title"></h1>
+        <p id="card-status" class="muted small"></p>
+        <dl class="spec-list" id="spec-list"></dl>
+
+        <ol class="print-steps" data-copy-list="cardPage.steps"></ol>
+
+        <div class="row gap wrap">
+          <button id="btn-print" class="btn primary" type="button" data-copy="cardPage.print"></button>
+          <button id="btn-download" class="btn" type="button" data-copy="cardPage.download"></button>
+          <a class="btn ghost" href="index.html" data-copy="cardPage.backToMeasure"></a>
+          <a class="btn ghost" href="calibrate.html" data-copy="cardPage.toCalibrate"></a>
+        </div>
+
+        <p class="muted tiny" data-copy="cardPage.specSourceNote"></p>
+        <p class="muted tiny" data-copy="cardPage.serverNote"></p>
+      </aside>
+
+      <div class="paper-wrap">
+        <div class="paper" id="paper">
+          <canvas id="card-canvas" data-copy-aria="cardPage.canvasLabel"></canvas>
+          <div id="card-fallback-note" class="render-error" hidden></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="js/card-page.js"></script>
+  </body>
+</html>

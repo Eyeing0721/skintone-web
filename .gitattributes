@@ -1,0 +1,9 @@
+# 统一换行符，避免 Windows 上 LF 被换成 CRLF 后 Linux 用户 clone 到不一致的内容
+* text=auto eol=lf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
