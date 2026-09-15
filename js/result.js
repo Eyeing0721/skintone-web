@@ -356,24 +356,8 @@ async function mountShareCard(root, r) {
   }
 }
 
-function metaCard(r) {
-  const created = r.createdAt ? new Date(r.createdAt) : null;
-  const when = created && !Number.isNaN(created.getTime()) ? created.toLocaleString() : EMPTY;
-  // 只保留"这次测量是什么时候"和删除入口——requestId / 版本号是给接口使用者的，
-  // 不是给用户看的（契约 §0 的两套受众：界面给人话，API 给技术细节）。
-  return `<section class="card meta">
-    <header class="card-head">
-      <h2>${esc(R.cards.meta)}</h2>
-      ${when ? `<span class="muted small">${esc(when)}</span>` : ''}
-    </header>
-    <div class="row gap meta-actions">
-      <button class="btn" data-action="delete-result" data-id="${esc(r.requestId || '')}">${esc(
-        COPY.resultStep.deleteButton,
-      )}</button>
-      <span class="muted small">${esc(R.cards.deleteNote)}</span>
-    </div>
-  </section>`;
-}
+/* 说明：这里原本有个 metaCard（显示 requestId / 版本号 + 删除按钮），
+   已按"界面只给人话、不留内部状态"的原则移除，其位置由 shareBlock 接替。 */
 
 /* ------------------------------------------------------------------ */
 /* 入口                                                                */
@@ -421,10 +405,6 @@ export function renderResult(root, r) {
   // 转头又递上一张带配色的卡，是自相矛盾。
   if (!noAdvice) blocks.push(safe('shareCard', () => shareBlock()));
   root.innerHTML = `<div class="result-view">${blocks.filter(Boolean).join('')}
-    <p class="result-foot">
-      <button class="inline-link" type="button" data-action="delete-result" data-id="${esc(r.requestId || '')}">${esc(COPY.resultStep.deleteButton)}</button>
-      <span class="muted tiny">${esc(R.cards.deleteNote)}</span>
-    </p>
     <p class="disclaimer">${esc(r.disclaimer || R.disclaimerFallback)}</p>
   </div>`;
 

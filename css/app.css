@@ -809,10 +809,6 @@ pre.ccm::-webkit-scrollbar { display: none; }
   background: #fbf9f5;
   box-shadow: 0 14px 30px -22px rgba(26, 24, 21, 0.55);
 }
-
-/* 结果页底部：删除入口做成一行小链接，不再单占一张卡 */
-.result-foot { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
-button.inline-link { border: 0; background: none; padding: 0; font: inherit; }
 .card.error-card { border-left: 2px solid var(--signal); }
 .card.error-card .hint { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
 
