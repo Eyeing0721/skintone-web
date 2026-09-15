@@ -106,6 +106,14 @@ body.app {
 
 body.app > * { position: relative; z-index: 1; }
 
+/*
+  页头必须盖住内容区。
+  .topbar 用了 backdrop-filter，这会自建层叠上下文；而 .content 是它后面的
+  兄弟节点。两者同层级时**后出现的内容区会盖上来**，把页头里任何浮层的点击
+  吃掉——这就是设置面板"点不动"的原因。给页头更高的 z-index 从根上解决。
+*/
+body.app > .topbar { z-index: 40; }
+
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
@@ -200,6 +208,28 @@ body.app > * { position: relative; z-index: 1; }
 }
 
 .settings-panel p { margin: 0; }
+
+/* 页头右侧：额度余量 + 源码地址。界面上唯一露出的外部信息，就这些。 */
+.topbar-out { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+
+.gh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.gh-link:hover { border-color: var(--hair-strong); background: #fff; }
+.gh-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gh-mark { width: 15px; height: 15px; flex: 0 0 auto; opacity: 0.85; }
 
 /* ── 5. 内容区 ─────────────────────────────────────────────────────── */
 .content {

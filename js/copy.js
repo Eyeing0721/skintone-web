@@ -66,13 +66,10 @@ export const COPY = {
     authRequiredNotice: ' —— 该服务需要访问密钥，请向服务提供者索取后填入「服务设置」。',
     specMismatchToast: (serverSpec, clientSpec) =>
       `注意：服务端 specVersion=${serverSpec}，本前端对齐 ${clientSpec}，字段含义可能不一致。`,
-    /** 设置面板里的说明段落 */
-    keyNote:
-      '这个后端不需要密钥，留空即可——挡滥用靠的是每日额度（同一浏览器或同一网络每天 5 次，拍失败的不计数）。只有你自己部署、并在服务端设了 SKINTONE_API_KEY 时才需要填。密钥只存在你自己浏览器的 localStorage 里，除了发给上面这个地址之外不会去任何地方。',
-    priorityNote:
-      '优先级：?api= 查询参数 > localStorage.skintone.apiBase > js/config.js 的默认值。',
-    selfHostNote:
-      '自己在本机跑后端时把地址改成 http://127.0.0.1:8000；手机访问时别写 localhost——那指的是手机自己。',
+    /** 设置面板已从界面上撤下（普通用户不需要），这些文案只留给自部署者看源码时参考 */
+    keyNote: '自部署且服务端设了 SKINTONE_API_KEY 时才需要。',
+    priorityNote: '?api= 查询参数 > localStorage > js/config.js。',
+    selfHostNote: '自部署：本机后端填 http://127.0.0.1:8000；手机访问别写 localhost。',
   },
 
   /* ───────── 四步流程导航 ───────── */
