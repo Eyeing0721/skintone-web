@@ -29,7 +29,7 @@ export const CARD_COPY = {
   },
   percentile: (p) => `比 ${p}% 的人肤色更浅`,
   trust: {
-    high: { cn: '可信度 高', note: '色卡标定通过全部门禁' },
+    high: { cn: '可信度 高', note: '色卡标定通过全部检查' },
     medium: { cn: '可信度 中', note: '未用参考卡，底色判定仅供参考' },
     low: { cn: '可信度 低', note: '光照或取样不理想，仅作参考' },
     insufficient: { cn: '可信度 不足', note: '想要更准请用比色卡模式重测' },

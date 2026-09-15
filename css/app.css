@@ -62,6 +62,16 @@
 
 /* ── 2. 基座 ───────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
+
+/*
+  [hidden] 必须由作者样式表重申。
+  浏览器默认样式里的 [hidden] { display: none } 是 **UA 声明**，作者样式表里
+  任何一条 display 都会盖过它。而 js/app.js 完全依赖 el.hidden 来切换步骤与
+  元素，所以只要某个类写了 display（.step-panel.panel-fill 的 flex、
+  .stage-empty 的 grid、.stage video 的 block…），隐藏就会失效——改版时确实
+  因此让"标注"整屏在每一步都露了出来。
+*/
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 
 body {
