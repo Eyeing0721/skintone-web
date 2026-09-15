@@ -358,6 +358,17 @@ body.app > .topbar { z-index: 40; }
 .hint-box li { margin-bottom: 3px; }
 .hint-box b { display: block; margin-bottom: 2px; font-family: var(--serif); font-size: 14.5px; }
 
+/* 拍摄指引：默认展开，所以那条最关键的话要能一眼看到 */
+.guide .guide-lead {
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.guide ul { margin-top: 8px; }
+.guide li { color: var(--muted); }
+
 .fine-print { margin-top: 4px; }
 .card-only { margin-bottom: 6px; }
 

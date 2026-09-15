@@ -171,15 +171,20 @@
             <span data-copy="captureStep.chooseFile"></span>
             <input id="file-input" type="file" accept="image/jpeg,image/png" hidden />
           </label>
-          <button id="btn-guide-photo" class="btn ghost" type="button" data-copy="captureStep.guideToggle"></button>
+        </div>
+
+        <!--
+          拍摄指引默认展开：用户按下快门前就该看到"怎么拍"。
+          这里原本有个「拍摄要点」按钮，但它在整个前端 JS 里都没有点击处理器，
+          按下去毫无反应。所以不是补一个处理器，而是直接去掉这个多余控件。
+        -->
+        <div id="guide-photo" class="hint-box guide">
+          <b data-copy="captureStep.guideTitle"></b>
+          <p class="guide-lead" data-copy="captureStep.guideLead"></p>
+          <ul data-copy-list="captureStep.guideItems"></ul>
         </div>
 
         <p id="capture-info" class="muted tiny"></p>
-
-        <div id="guide-photo" class="hint-box" hidden>
-          <b data-copy="captureStep.guideTitle"></b>
-          <ul data-copy-list="captureStep.guideItems"></ul>
-        </div>
 
         <div class="consent">
           <label class="check">
