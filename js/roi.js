@@ -66,8 +66,8 @@ class Region {
 
 /**: 一次点击生成的默认取样半径（相对图片短边） */
 const SAMPLE_RADIUS_RATIO = 0.09;
-/**: 圆形取样区的顶点数；越多越圆，8 个已足够且导出更短 */
-const SAMPLE_SEGMENTS = 20;
+/**: 圆形取样区的顶点数。16 边形在屏幕上看已经是圆，导出也短——不要再堆几十个点。 */
+const SAMPLE_SEGMENTS = 16;
 
 /** 以 (cx, cy) 为心生成一个闭合的圆形多边形。 */
 function circlePolygon(cx, cy, radius, segments) {
@@ -97,6 +97,15 @@ function circleOf(points) {
   let total = 0;
   for (const [x, y] of points) total += Math.hypot(x - cx, y - cy);
   return { cx, cy, r: total / points.length };
+}
+
+/** 顶点是否均匀落在同一个圆上（我们生成的样本就是正圆，用于渲染成光滑圆弧）。 */
+function isRound(points, tolerance = 0.06) {
+  const circle = circleOf(points);
+  if (!circle || circle.r <= 0) return false;
+  return points.every(
+    ([x, y]) => Math.abs(Math.hypot(x - circle.cx, y - circle.cy) - circle.r) <= circle.r * tolerance,
+  );
 }
 
 export class RoiEditor {
@@ -341,36 +350,57 @@ export class RoiEditor {
     for (const region of this.regions) {
       if (!region.points.length) continue;
       const pts = region.points.map((p) => this.toScreen(p));
+      // 我们生成的样本是正圆：直接画圆弧，并且**不铺一地点**。
+      // 一堆顶点会让人以为要逐个去调，画面也很吵。
+      const circle = circleOf(region.points);
+      const round = Boolean(circle) && isRound(region.points);
+      const tracePath = () => {
+        if (round) {
+          const [kx, ky] = this.toScreen([circle.cx, circle.cy]);
+          ctx.arc(kx, ky, circle.r * this.view.scale, 0, Math.PI * 2);
+          return;
+        }
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
+        if (region.closed) ctx.closePath();
+      };
+
       ctx.save();
       if (region.closed) {
         ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.closePath();
+        tracePath();
         ctx.fillStyle = withAlpha(region.color, g.activeFillAlpha);
         ctx.fill();
       }
       ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
-      if (region.closed) ctx.closePath();
+      tracePath();
       ctx.strokeStyle = region.color;
       ctx.lineWidth = region.selected ? g.strokeWidthActive : g.strokeWidthIdle;
       ctx.setLineDash(region.selected ? [] : g.dash);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      for (const [px, py] of pts) {
-        ctx.beginPath();
-        ctx.arc(px, py, region.selected ? g.vertexRadius : g.vertexRadius - 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = regionColor('vertex-ink', '#101418');
-        ctx.fill();
-        ctx.strokeStyle = region.color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
+      // 只有"非圆"（被手动微调过的）才画顶点，方便逐个调；正圆只画轮廓
+      if (!round) {
+        for (const [px, py] of pts) {
+          ctx.beginPath();
+          ctx.arc(px, py, region.selected ? g.vertexRadius : g.vertexRadius - 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = regionColor('vertex-ink', '#101418');
+          ctx.fill();
+          ctx.strokeStyle = region.color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        if (region.selected && pts.length) {
+          const [lx, ly] = pts[pts.length - 1];
+          ctx.beginPath();
+          ctx.arc(lx, ly, g.vertexRadius + g.lastPointRingGap, 0, Math.PI * 2);
+          ctx.strokeStyle = withAlpha(region.color, 0.55);
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       }
-      // 半径手柄：一个明显更大的白边圆点，拖它就能改半径。
-      // 放在圆上而不是另做一条滑杆——少一个控件，而且位置本身就是提示。
+      // 圆形样本只留一个"白点"：拖它调半径。位置本身就是提示，不必另加滑杆。
       if (region.selected && region.group === 'skin' && region.closed) {
         const knob = this._knobPoint(region);
         if (knob) {
@@ -382,14 +412,6 @@ export class RoiEditor {
           ctx.lineWidth = 2.5;
           ctx.stroke();
         }
-      }
-      if (region.selected && pts.length) {
-        const [lx, ly] = pts[pts.length - 1];
-        ctx.beginPath();
-        ctx.arc(lx, ly, g.vertexRadius + g.lastPointRingGap, 0, Math.PI * 2);
-        ctx.strokeStyle = withAlpha(region.color, 0.55);
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
       }
       ctx.restore();
     }
