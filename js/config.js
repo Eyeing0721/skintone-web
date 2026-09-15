@@ -19,6 +19,12 @@ export const STORAGE_KEYS = Object.freeze({
   cardProfileId: 'skintone.cardProfileId',
   illuminantGuess: 'skintone.illuminantGuess',
   storeImage: 'skintone.consent.storeImage',
+  /** 浏览器指纹（服务端据此算每日额度）；本机生成一次后复用 */
+  clientId: 'skintone.clientId',
+  /** 上一次已知的额度余量，避免每次开页都先请求一次 */
+  quota: 'skintone.quota',
+  /** 最近一次分析结果，结果卡页面读它 */
+  lastResult: 'skintone.lastResult',
 });
 
 /**
@@ -28,14 +34,37 @@ export const STORAGE_KEYS = Object.freeze({
  */
 export const API_BASE = 'https://skintest.0721.luxe';
 
-/** 上传前压缩上限（契约 §7「原图全传」：只做尺寸上限与有损编码，绝不裁剪） */
+/**
+ * 上传前自动压缩（契约 §7：只做尺寸上限与有损编码，**绝不裁剪**）。
+ *
+ * 手机原图动辄 4000×3000 / 5–8 MB，直传对带宽和「5 次/天」的额度都不友好。
+ * 长边 2048 对"取一块皮肤的中位数"已经完全够用（人脸约占画面 40%，仍有约 800px）。
+ * 顺带一个好处：canvas 会把 iPhone 常见的 Display P3 归一化到 sRGB，这对测色**是好事**。
+ * 只重编码一次，绝不二次转码——JPEG 的 4:2:0 色度子采样会伤彩度。
+ */
 export const UPLOAD = Object.freeze({
-  /** 长边最大像素 */
-  maxLongEdge: 4096,
-  /** JPEG 质量 */
-  jpegQuality: 0.92,
+  /** 长边最大像素（无卡模式） */
+  maxLongEdge: 2048,
+  /** 比色卡模式放宽：要能看清 ArUco 标记的方框边缘 */
+  cardMaxLongEdge: 2560,
+  /** JPEG 质量；再往下压就开始损失肤色色度了 */
+  jpegQuality: 0.9,
   /** 与服务端 SKINTONE_MAX_UPLOAD_MB 默认值一致，仅用于前端提前提示 */
   maxBytes: 20 * 1024 * 1024,
+});
+
+/**
+ * 每日额度（服务端防滥用，不是认证）。
+ * 服务端任一维度用满即返回 429；响应用这三个头告诉前端还剩几次。
+ */
+export const QUOTA = Object.freeze({
+  headerLimit: 'X-Quota-Limit',
+  headerRemaining: 'X-Quota-Remaining',
+  headerDay: 'X-Quota-Day',
+  /** 请求头名：浏览器指纹（服务端会哈希后存储，不存原始值） */
+  headerClientId: 'X-Client-Id',
+  /** 服务端默认值，仅用于界面兜底显示（真实限额以响应头为准） */
+  fallbackPerDay: 5,
 });
 
 /** 默认参考卡 id（契约 §3） */

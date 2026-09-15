@@ -45,8 +45,10 @@ export const COPY = {
   settings: {
     baseLabel: '服务基地址',
     basePlaceholder: 'https://…',
-    keyLabel: '访问密钥（X-API-Key）',
-    keyPlaceholder: '向服务提供者索取',
+    // 面向大众的入口不要求密钥（防滥用交给服务端的每日额度），
+    // 所以这一项默认收起、可以留空；只有自部署者给自己上锁时才需要填。
+    keyLabel: '访问密钥（可选，一般不用填）',
+    keyPlaceholder: '留空即可；只在服务端设了 SKINTONE_API_KEY 时才需要',
     save: '保存',
     test: '测试连接',
     reset: '恢复默认',
@@ -66,7 +68,7 @@ export const COPY = {
       `注意：服务端 specVersion=${serverSpec}，本前端对齐 ${clientSpec}，字段含义可能不一致。`,
     /** 设置面板里的说明段落 */
     keyNote:
-      '这个后端需要访问密钥：没有它，除 GET /v1/health 以外的请求都会返回 401。密钥只存在你自己浏览器的 localStorage 里，除了发给上面这个地址之外不会去任何地方。',
+      '这个后端不需要密钥，留空即可——挡滥用靠的是每日额度（同一浏览器或同一网络每天 5 次，拍失败的不计数）。只有你自己部署、并在服务端设了 SKINTONE_API_KEY 时才需要填。密钥只存在你自己浏览器的 localStorage 里，除了发给上面这个地址之外不会去任何地方。',
     priorityNote:
       '优先级：?api= 查询参数 > localStorage.skintone.apiBase > js/config.js 的默认值。',
     selfHostNote:

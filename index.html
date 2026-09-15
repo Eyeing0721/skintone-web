@@ -29,6 +29,7 @@
         <summary data-copy-title="topbar.settingsSummaryTitle">
           <span id="health-dot" class="dot" data-state="checking"></span>
           <span class="settings-label" data-copy="topbar.settingsLabel"></span>
+          <span id="quota-badge" class="muted tiny"></span>
           <svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
         </summary>
         <div class="settings-panel">
@@ -47,11 +48,35 @@
           </label>
           <p class="muted tiny" data-copy="settings.keyNote"></p>
           <p class="muted tiny" data-copy="settings.priorityNote"></p>
+          <p id="quota-text" class="muted tiny"></p>
           <p id="health-text" class="muted small"></p>
           <p class="muted tiny" data-copy="settings.selfHostNote"></p>
         </div>
       </details>
     </header>
+
+    <!--
+      每日额度显示。单独一个小模块订阅 api.js 的配额头，
+      不去动 app.js 的主流程——额度是横切关注点，不该和步骤状态机耦合。
+    -->
+    <script type="module">
+      import { onQuotaChange } from './js/api.js';
+
+      const badge = document.getElementById('quota-badge');
+      const text = document.getElementById('quota-text');
+
+      onQuotaChange((info) => {
+        if (info.remaining === null) {
+          badge.textContent = '';
+          text.textContent = '';
+          return;
+        }
+        badge.textContent = `今日剩余 ${info.remaining} 次`;
+        text.textContent = info.remaining > 0
+          ? `今天还能测 ${info.remaining} 次（每日上限 ${info.limit ?? '—'} 次）。失败的那几次不计数。`
+          : '今天的额度用完了，明天自动恢复。';
+      });
+    </script>
 
     <main id="content" class="content">
       <!-- ───── 第 1 步：模式 ───── -->

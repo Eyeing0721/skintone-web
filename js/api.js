@@ -10,8 +10,9 @@
  * 提示文案本身在 js/copy.js 的 `errors`，本文件只做映射逻辑。
  */
 
-import { API_BASE, STORAGE_KEYS, CLIENT_VERSION } from './config.js';
+import { API_BASE, STORAGE_KEYS, CLIENT_VERSION, QUOTA } from './config.js';
 import { COPY } from './copy.js';
+import { getClientId, serverDay } from './fingerprint.js';
 
 /** 请求超时（毫秒）。分析要跑 OpenCV，给足时间。 */
 const TIMEOUTS = Object.freeze({
@@ -39,6 +40,72 @@ export const CONTRACT_ERROR_CODES = Object.freeze([
 export const ERROR_HINTS = COPY.errors;
 
 const CLIENT_ERROR_HINTS = COPY.errors;
+
+/* ------------------------------------------------------------------ */
+/* 每日额度（服务端防滥用，不是认证）                                  */
+/* ------------------------------------------------------------------ */
+
+/** 最近一次从响应头读到的额度。界面靠它显示"今天还能测几次"。 */
+export const quotaState = { limit: null, remaining: null, day: null, listeners: new Set() };
+
+/** 当前额度的快照。 */
+export function snapshotQuota() {
+  return { limit: quotaState.limit, remaining: quotaState.remaining, day: quotaState.day };
+}
+
+/**
+ * 订阅额度变化。订阅时会立刻用当前值调用一次，方便界面初始化。
+ * @param {(info: {limit: number|null, remaining: number|null, day: string|null}) => void} fn
+ * @returns {() => void} 取消订阅
+ */
+export function onQuotaChange(fn) {
+  quotaState.listeners.add(fn);
+  fn(snapshotQuota());
+  return () => quotaState.listeners.delete(fn);
+}
+
+function readQuotaHeaders(res) {
+  const raw = res.headers.get(QUOTA.headerRemaining);
+  if (raw === null) return null;
+  const limit = Number(res.headers.get(QUOTA.headerLimit));
+  const remaining = Number(raw);
+  const day = res.headers.get(QUOTA.headerDay) || null;
+  return {
+    limit: Number.isFinite(limit) ? limit : null,
+    remaining: Number.isFinite(remaining) ? remaining : null,
+    day,
+  };
+}
+
+function rememberQuota(info) {
+  quotaState.limit = info.limit;
+  quotaState.remaining = info.remaining;
+  quotaState.day = info.day;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.quota, JSON.stringify(info));
+  } catch {
+    /* 隐私模式：只留内存值，不影响功能 */
+  }
+  for (const fn of quotaState.listeners) {
+    try {
+      fn(info);
+    } catch {
+      /* 订阅者自己的异常不该影响请求流程 */
+    }
+  }
+}
+
+// 开页时先回填上一次的余量，免得用户先看到一个空白
+try {
+  const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEYS.quota) || 'null');
+  if (saved && typeof saved.remaining === 'number' && saved.day === serverDay()) {
+    quotaState.limit = saved.limit ?? null;
+    quotaState.remaining = saved.remaining;
+    quotaState.day = saved.day;
+  }
+} catch {
+  /* 忽略损坏的缓存 */
+}
 
 /**
  * 归一化后的 API 错误。`code` 是契约错误码（或前端补充码），
@@ -199,6 +266,8 @@ async function request(path, options = {}) {
   const key = getApiKey();
   if (key && !options.noAuth) headers.set('X-API-Key', key);
   headers.set('X-Client-Version', CLIENT_VERSION);
+  // 浏览器指纹：服务端据此累计每日额度。它是防滥用信号，不是身份凭证。
+  headers.set(QUOTA.headerClientId, getClientId());
 
   const controller = new AbortController();
   const timeout = options.timeout || TIMEOUTS.json;
@@ -219,10 +288,19 @@ async function request(path, options = {}) {
   }
   clearTimeout(timer);
 
+  // 额度信息在响应头里：成功要读，429 也要读（那正是"用完了"的答复）。
+  // fetch 的 Headers.get 大小写不敏感，所以经 Cloudflare 小写化也不受影响。
+  const quota = readQuotaHeaders(res);
+  if (quota) rememberQuota(quota);
+
   if (res.status === 204) return null;
 
   const { json, text } = await readBody(res);
-  if (!res.ok) throw errorFromResponse(res.status, json, text);
+  if (!res.ok) {
+    const error = errorFromResponse(res.status, json, text);
+    if (quota) error.quota = quota;
+    throw error;
+  }
   if (json === null) {
     throw new ApiError({
       code: 'INVALID_JSON',
